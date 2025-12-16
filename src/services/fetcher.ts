@@ -58,8 +58,49 @@ async function performOcr(buffer: Buffer): Promise<{ text: string; ocrUsed: bool
   }
 }
 
-function extractTextFromHtml(html: string, url: string): string {
+/**
+ * Extracts text from jade.io HTML with special handling for their structure
+ */
+function extractTextFromJadeHtml(html: string): string {
   const $ = cheerio.load(html);
+
+  // Remove unwanted elements
+  $("script, style, nav, header, footer, .sidebar, .navigation, .menu").remove();
+
+  // jade.io specific selectors
+  const jadeSelectors = [
+    ".judgment-text",
+    ".judgment-content", 
+    ".decision-text",
+    "#judgment",
+    ".case-content",
+    "article.judgment",
+  ];
+
+  for (const selector of jadeSelectors) {
+    const $content = $(selector);
+    if ($content.length > 0) {
+      const text = $content.text().trim();
+      if (text.length > 200) {
+        return text;
+      }
+    }
+  }
+
+  // Fall through to generic extraction
+  return extractTextFromHtml(html);
+}
+
+/**
+ * Generic HTML text extraction for AustLII and other sources
+ */
+function extractTextFromHtml(html: string, url?: string): string {
+  const $ = cheerio.load(html);
+
+  // Check if this is jade.io
+  if (url && url.includes('jade.io')) {
+    return extractTextFromJadeHtml(html);
+  }
 
   // Remove script and style elements
   $("script, style, nav, header, footer").remove();

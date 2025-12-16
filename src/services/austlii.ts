@@ -5,8 +5,9 @@ export interface SearchResult {
   title: string;
   citation?: string;
   neutralCitation?: string;
+  reportedCitation?: string; // e.g., "(2024) 350 ALR 123"
   url: string;
-  source: "austlii";
+  source: "austlii" | "jade";
   summary?: string;
   jurisdiction?: string;
   year?: string;
@@ -26,6 +27,29 @@ interface SearchParams {
   query: string;
   meta: string;
   mask_path?: string;
+}
+
+/**
+ * Extracts reported citation from text
+ * Matches patterns like: (2024) 350 ALR 123, (2024) 98 ALJR 456, etc.
+ */
+function extractReportedCitation(text: string): string | undefined {
+  // Common law report patterns:
+  // (YYYY) Volume REPORTER Page
+  // Examples: (2024) 350 ALR 123, (2024) 98 ALJR 456, (1992) 175 CLR 1
+  const patterns = [
+    /\((\d{4})\)\s+(\d+)\s+([A-Z]{2,6})\s+(\d+)/,  // (2024) 350 ALR 123
+    /\[(\d{4})\]\s+(\d+)\s+([A-Z]{2,6})\s+(\d+)/,  // [2024] 350 ALR 123
+  ];
+  
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return match[0];
+    }
+  }
+  
+  return undefined;
 }
 
 /**
@@ -156,7 +180,7 @@ export async function searchAustLii(
           return; // Skip non-legislation results
         }
 
-        // Try to extract citation from title
+        // Try to extract neutral citation from title
         const citationMatch = title.match(/\[(\d{4})\]\s*([A-Z]+)\s*(\d+)/);
         const neutralCitation = citationMatch ? citationMatch[0] : undefined;
         const year = citationMatch ? citationMatch[1] : undefined;
@@ -168,11 +192,16 @@ export async function searchAustLii(
         // Extract summary from <small> tag if present
         const $small = $li.find("small");
         const summary = $small.length > 0 ? $small.text().trim() : undefined;
+        
+        // Try to extract reported citation from title or summary
+        const reportedCitation = extractReportedCitation(title) || 
+                                (summary ? extractReportedCitation(summary) : undefined);
 
         results.push({
           title,
           citation: undefined,
           neutralCitation,
+          reportedCitation,
           url,
           source: "austlii",
           summary,

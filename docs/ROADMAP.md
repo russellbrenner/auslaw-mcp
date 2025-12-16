@@ -183,10 +183,37 @@ function calculateAuthorityScore(result: SearchResult): number {
 2. ✅ ~~Preserve paragraph numbers properly~~ (already working)
 3. ✅ ~~Add search mode parameter (relevance/date/auto)~~ (COMPLETED)
 
+### ✅ Phase 2A: Reported Citations & jade.io Support (COMPLETED)
+
+**Implemented features:**
+1. ✅ Reported citation extraction from AustLII results
+   - Extracts citations like `(2024) 350 ALR 123`, `(1992) 175 CLR 1`
+   - Supports common law report patterns (CLR, ALR, ALJR, etc.)
+   - Automatically extracted from titles and summaries
+2. ✅ jade.io URL support in document fetcher
+   - Users can paste jade.io URLs they have access to
+   - Special HTML parsing for jade.io document structure
+   - Falls back to generic extraction when needed
+3. ✅ Enhanced SearchResult interface
+   - Added `reportedCitation` field
+   - Updated `source` to support both "austlii" and "jade"
+4. ✅ New test coverage (4 additional tests)
+
+**What this enables:**
+- Users can now see both neutral and reported citations
+- More complete citation information for legal research
+- jade.io integration without needing API access
+- Users leverage their own jade.io subscriptions
+
+**Technical implementation:**
+- `extractReportedCitation()` function with regex patterns
+- `extractTextFromJadeHtml()` for jade.io-specific parsing
+- Updated test suite with 18 total scenarios
+
 ### Should Have (Following Sprint)
-1. 🔶 Add jade.io integration for reported judgments
-2. 🔶 Implement page number extraction
-3. 🔶 Add authority-based ranking
+1. 🔶 Contact jade.io for search API access (Phase 2B)
+2. 🔶 Implement page number extraction (Phase 3)
+3. 🔶 Add authority-based ranking (Phase 4)
 
 ### Nice to Have (Future)
 1. 📋 BarNet Jade integration
