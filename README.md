@@ -302,6 +302,7 @@ Test scenarios include:
 ```
 src/
 ├── index.ts              # MCP server & tool registration
+├── config.ts             # Configuration management
 ├── services/
 │   ├── austlii.ts       # AustLII search integration
 │   └── fetcher.ts       # Document text retrieval
@@ -309,7 +310,59 @@ src/
 │   └── formatter.ts     # Output formatting
 └── test/
     └── scenarios.test.ts # Integration tests
+
+k8s/
+├── namespace.yaml        # Kubernetes namespace
+├── configmap.yaml        # Configuration for k8s
+├── deployment.yaml       # Deployment specification
+├── service.yaml          # Service definition
+└── README.md            # Kubernetes deployment guide
+
+docs/
+├── DOCKER.md            # Docker deployment guide
+├── architecture.md      # Architecture documentation
+└── ROADMAP.md          # Development roadmap
 ```
+
+## Deployment
+
+### Docker
+
+Quick start:
+```bash
+./build.sh              # Build Docker image
+docker-compose up       # Run locally
+```
+
+See [docs/DOCKER.md](docs/DOCKER.md) for detailed Docker deployment instructions.
+
+### Kubernetes (k3s)
+
+Quick start:
+```bash
+./build.sh              # Build and export image
+# Import to k3s nodes (see k8s/README.md)
+./deploy-k8s.sh         # Deploy to cluster
+```
+
+See [k8s/README.md](k8s/README.md) for complete k3s deployment guide and [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) for a comprehensive deployment checklist.
+
+### Configuration
+
+All configuration can be customized via environment variables:
+
+- `AUSTLII_SEARCH_BASE` - AustLII search endpoint
+- `AUSTLII_REFERER` - Referer header
+- `AUSTLII_USER_AGENT` - User agent string
+- `AUSTLII_TIMEOUT` - Request timeout (ms)
+- `OCR_LANGUAGE` - Tesseract OCR language
+- `OCR_OEM`, `OCR_PSM` - OCR engine settings
+- `DEFAULT_SEARCH_LIMIT` - Default search results
+- `MAX_SEARCH_LIMIT` - Maximum search results
+- `DEFAULT_OUTPUT_FORMAT` - Default format (json/text/markdown/html)
+- `DEFAULT_SORT_BY` - Default sort order (auto/relevance/date)
+
+See [config.yaml](config.yaml) for defaults and `.env.example` for a template.
 
 ## Contributing
 
