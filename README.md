@@ -22,6 +22,8 @@ Model Context Protocol (MCP) server for Australian and New Zealand legal researc
 - ✅ **Primary sources only**: Filters out journal articles and commentary
 - ✅ **Citation extraction**: Extracts neutral citations `[2025] HCA 26` and reported citations `(2024) 350 ALR 123`
 - ✅ **jade.io URL support**: Fetch document text from jade.io URLs (requires user access)
+- ✅ **jade.io article resolution**: Resolve jade.io article metadata by ID
+- ✅ **jade.io citation lookup**: Generate jade.io lookup URLs from neutral citations
 - ✅ **Paragraph preservation**: Keeps `[N]` paragraph numbers for pinpoint citations
 - ✅ **Multiple formats**: JSON, text, markdown, or HTML output
 - ✅ **Document retrieval**: Full text from HTML and PDF sources (AustLII, jade.io)
@@ -37,19 +39,96 @@ See [ROADMAP.md](docs/ROADMAP.md) for detailed development plans.
 
 ## Quick Start
 
-### Local Development
+### 1. Clone and Build
 
 ```bash
 git clone https://github.com/russellbrenner/auslaw-mcp.git
 cd auslaw-mcp
 npm install
-npm run dev  # hot reload for local development
+npm run build
 ```
 
-To build for production:
+For local development with hot reload:
 ```bash
-npm run build
-npm start
+npm run dev
+```
+
+### 2. Configure Your MCP Client
+
+> **Important**: You must build the project (`npm run build`) before configuring any client. All clients launch the compiled `dist/index.js`.
+
+#### Claude Desktop
+
+Edit your Claude Desktop configuration file:
+
+| OS | Path |
+|----|------|
+| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+| Linux | `~/.config/Claude/claude_desktop_config.json` |
+
+Add the following (replace `/path/to/auslaw-mcp` with your actual install path):
+
+```json
+{
+  "mcpServers": {
+    "auslaw-mcp": {
+      "command": "node",
+      "args": ["/path/to/auslaw-mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop after saving.
+
+#### Claude Code (CLI)
+
+Register the MCP server using the `claude mcp add` command:
+
+```bash
+claude mcp add auslaw-mcp node /path/to/auslaw-mcp/dist/index.js
+```
+
+To verify it was added:
+
+```bash
+claude mcp list
+```
+
+#### Codex (OpenAI CLI)
+
+Add auslaw-mcp as a server in your Codex MCP configuration file (`~/.codex/config.json` or project-level `.codex/config.json`):
+
+```json
+{
+  "mcpServers": {
+    "auslaw-mcp": {
+      "command": "node",
+      "args": ["/path/to/auslaw-mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+#### Cursor
+
+Open **Settings → MCP** and add a new server with:
+
+- **Name**: `auslaw-mcp`
+- **Command**: `node /path/to/auslaw-mcp/dist/index.js`
+
+Or edit `.cursor/mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "auslaw-mcp": {
+      "command": "node",
+      "args": ["/path/to/auslaw-mcp/dist/index.js"]
+    }
+  }
+}
 ```
 
 ### Docker Deployment
@@ -79,23 +158,6 @@ kubectl apply -f k8s/
 ```
 
 See [k8s/README.md](k8s/README.md) for complete Kubernetes deployment guide.
-
-## MCP Registration
-Configure your MCP-compatible client (eg. Claude Desktop, Cursor) to launch the compiled server.
-
-For Claude Desktop, edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "auslaw-mcp": {
-      "command": "node",
-      "args": ["/path/to/auslaw-mcp/dist/index.js"]
-    }
-  }
-}
-```
-
-Replace `/path/to/auslaw-mcp` with the actual path to your installation.
 
 ## Example Queries for AI Assistants
 
@@ -272,6 +334,36 @@ Fetch full text from a case or legislation URL. Supports HTML and PDF with OCR f
 }
 ```
 
+### resolve_jade_article
+Resolve metadata for a jade.io article by its numeric ID. Returns case name, neutral citation, jurisdiction, and year.
+
+**Parameters:**
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `articleId` | Yes | jade.io article numeric ID (positive integer) |
+
+**Example:**
+```json
+{
+  "articleId": 68901
+}
+```
+
+### jade_citation_lookup
+Generate a jade.io lookup URL for a given neutral citation. Returns a URL that opens jade.io with the citation search.
+
+**Parameters:**
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `citation` | Yes | Neutral citation string (e.g., `[2008] NSWSC 323`) |
+
+**Example:**
+```json
+{
+  "citation": "[2008] NSWSC 323"
+}
+```
+
 ## Jurisdictions
 
 | Code | Jurisdiction |
@@ -305,27 +397,37 @@ Test scenarios include:
 
 ```
 src/
-├── index.ts              # MCP server & tool registration
-├── config.ts             # Configuration management
-├── services/
-│   ├── austlii.ts       # AustLII search integration
-│   └── fetcher.ts       # Document text retrieval
-├── utils/
-│   └── formatter.ts     # Output formatting
-└── test/
-    └── scenarios.test.ts # Integration tests
-
-k8s/
-├── namespace.yaml        # Kubernetes namespace
-├── configmap.yaml        # Configuration for k8s
-├── deployment.yaml       # Deployment specification
-├── service.yaml          # Service definition
-└── README.md            # Kubernetes deployment guide
+├── services
+│   ├── austlii.ts # AustLII search integration
+│   ├── fetcher.ts # Document text retrieval (HTML/PDF/OCR)
+│   └── jade.ts # jade.io article resolution & citation lookup
+├── test
+│   ├── unit
+│   │   ├── constants.test.ts
+│   │   ├── errors.test.ts
+│   │   ├── formatter.test.ts
+│   │   └── logger.test.ts
+│   ├── jade.test.ts
+│   └── scenarios.test.ts
+├── utils
+│   ├── formatter.ts # Output formatting (JSON/text/markdown/html)
+│   └── logger.ts # Logging utility
+├── config.ts # Configuration management
+├── constants.ts # Shared constants
+├── errors.ts # Error types and handling
+└── index.ts # MCP server & tool registration
 
 docs/
-├── DOCKER.md            # Docker deployment guide
-├── architecture.md      # Architecture documentation
-└── ROADMAP.md          # Development roadmap
+├── architecture.md # Architecture documentation
+├── DOCKER.md # Docker deployment guide
+└── ROADMAP.md # Development roadmap
+
+k8s/
+├── configmap.yaml # Configuration for k8s
+├── deployment.yaml # Deployment specification
+├── namespace.yaml # Kubernetes namespace
+├── README.md # Kubernetes deployment guide
+└── service.yaml # Service definition
 ```
 
 ## Deployment
