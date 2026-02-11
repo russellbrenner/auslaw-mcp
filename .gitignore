@@ -3,3 +3,6 @@ dist
 .DS_Store
 *.log
 tmp
+.env
+.env.local
+*.tar

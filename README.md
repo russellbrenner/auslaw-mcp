@@ -32,6 +32,9 @@ Model Context Protocol (MCP) server for Australian and New Zealand legal researc
 See [ROADMAP.md](docs/ROADMAP.md) for detailed development plans.
 
 ## Quick Start
+
+### Local Development
+
 ```bash
 git clone https://github.com/russellbrenner/auslaw-mcp.git
 cd auslaw-mcp
@@ -44,6 +47,34 @@ To build for production:
 npm run build
 npm start
 ```
+
+### Docker Deployment
+
+```bash
+# Build the Docker image
+docker build -t auslaw-mcp:latest .
+
+# Run with Docker Compose
+docker-compose up
+
+# Or run directly
+docker run -it --rm auslaw-mcp:latest
+```
+
+See [docs/DOCKER.md](docs/DOCKER.md) for detailed Docker deployment instructions.
+
+### Kubernetes (k3s) Deployment
+
+```bash
+# Build and import image to k3s nodes
+docker build -t auslaw-mcp:latest .
+docker save auslaw-mcp:latest -o auslaw-mcp.tar
+
+# Deploy to k3s cluster
+kubectl apply -f k8s/
+```
+
+See [k8s/README.md](k8s/README.md) for complete Kubernetes deployment guide.
 
 ## MCP Registration
 Configure your MCP-compatible client (eg. Claude Desktop, Cursor) to launch the compiled server.
