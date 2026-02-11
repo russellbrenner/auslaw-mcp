@@ -1,5 +1,6 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
+import { config } from "../config.js";
 
 export interface SearchResult {
   title: string;
@@ -26,15 +27,15 @@ export interface SearchOptions {
   offset?: number; // For pagination - skip first N results
 }
 
-const AUSTLII_SEARCH_BASE = "https://www.austlii.edu.au/cgi-bin/sinosrch.cgi";
-
 // Browser-like headers required by AustLII
-const AUSTLII_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  "Referer": "https://www.austlii.edu.au/forms/search1.html",
-  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "Accept-Language": "en-AU,en;q=0.9",
-};
+function getAustLiiHeaders() {
+  return {
+    "User-Agent": config.austlii.userAgent,
+    "Referer": config.austlii.referer,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-AU,en;q=0.9",
+  };
+}
 
 interface SearchParams {
   query: string;
@@ -194,7 +195,7 @@ export async function searchAustLii(
     // Determine sort mode (auto-detect or use explicit setting)
     const sortMode = determineSortMode(query, options);
 
-    const searchUrl = new URL(AUSTLII_SEARCH_BASE);
+    const searchUrl = new URL(config.austlii.searchBase);
     searchUrl.searchParams.set("method", searchParams.method);
     searchUrl.searchParams.set("query", searchParams.query);
     searchUrl.searchParams.set("meta", searchParams.meta);
@@ -218,8 +219,8 @@ export async function searchAustLii(
     }
 
     const response = await axios.get(searchUrl.toString(), {
-      headers: AUSTLII_HEADERS,
-      timeout: 60000, // 60 second timeout - AustLII can be slow
+      headers: getAustLiiHeaders(),
+      timeout: config.austlii.timeout,
     });
 
     const html = response.data;
