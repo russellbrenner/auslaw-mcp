@@ -115,7 +115,7 @@ All configuration can be set via environment variables:
 | `AUSTLII_SEARCH_BASE` | `https://www.austlii.edu.au/cgi-bin/sinosrch.cgi` | AustLII search endpoint |
 | `AUSTLII_REFERER` | `https://www.austlii.edu.au/forms/search1.html` | Referer header |
 | `AUSTLII_USER_AGENT` | Mozilla/5.0... | User agent string |
-| `AUSTLII_TIMEOUT` | `30000` | Request timeout (ms) |
+| `AUSTLII_TIMEOUT` | `60000` | Request timeout (ms) |
 | `OCR_LANGUAGE` | `eng` | Tesseract language |
 | `OCR_OEM` | `1` | OCR Engine Mode |
 | `OCR_PSM` | `3` | Page Segmentation Mode |

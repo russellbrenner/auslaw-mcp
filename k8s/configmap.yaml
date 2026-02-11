@@ -40,7 +40,7 @@ data:
       searchBase: ${AUSTLII_SEARCH_BASE:-https://www.austlii.edu.au/cgi-bin/sinosrch.cgi}
       referer: ${AUSTLII_REFERER:-https://www.austlii.edu.au/forms/search1.html}
       userAgent: ${AUSTLII_USER_AGENT:-Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36}
-      timeout: ${AUSTLII_TIMEOUT:-30000}
+      timeout: ${AUSTLII_TIMEOUT:-60000}
     
     ocr:
       language: ${OCR_LANGUAGE:-eng}
