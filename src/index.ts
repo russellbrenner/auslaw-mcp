@@ -5,6 +5,14 @@ import { z } from "zod";
 import { formatFetchResponse, formatSearchResults } from "./utils/formatter.js";
 import { fetchDocumentText } from "./services/fetcher.js";
 import { searchAustLii } from "./services/austlii.js";
+import {
+  resolveArticle,
+  resolveArticleFromUrl,
+  articleToSearchResult,
+  enrichWithJadeLinks,
+  isJadeUrl,
+  buildCitationLookupUrl,
+} from "./services/jade.js";
 
 const formatEnum = z.enum(["json", "text", "markdown", "html"]).default("json");
 const jurisdictionEnum = z.enum([
@@ -114,13 +122,71 @@ async function main() {
     {
       title: "Fetch Document Text",
       description:
-        "Fetch full text for a legislation or case URL, with OCR fallback for scanned PDFs.",
+        "Fetch full text for a legislation or case URL (AustLII or jade.io), with OCR fallback for scanned PDFs.",
       inputSchema: fetchDocumentShape,
     },
     async (rawInput) => {
       const { url, format } = fetchDocumentParser.parse(rawInput);
       const response = await fetchDocumentText(url);
       return formatFetchResponse(response, format ?? "json");
+    },
+  );
+
+  const resolveJadeArticleShape = {
+    articleId: z.number().int().min(1, "Article ID must be a positive integer."),
+  };
+  const resolveJadeArticleParser = z.object(resolveJadeArticleShape);
+
+  server.registerTool(
+    "resolve_jade_article",
+    {
+      title: "Resolve jade.io Article",
+      description:
+        "Resolve metadata for a jade.io article by its numeric ID. Returns case name, neutral citation, jurisdiction, and year. Useful for looking up specific articles on jade.io (BarNet Jade).",
+      inputSchema: resolveJadeArticleShape,
+    },
+    async (rawInput) => {
+      const { articleId } = resolveJadeArticleParser.parse(rawInput);
+      const article = await resolveArticle(articleId);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(article, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
+  const jadeLookupShape = {
+    citation: z.string().min(1, "Citation cannot be empty."),
+  };
+  const jadeLookupParser = z.object(jadeLookupShape);
+
+  server.registerTool(
+    "jade_citation_lookup",
+    {
+      title: "Look up Citation on jade.io",
+      description:
+        "Generate a jade.io lookup URL for a given neutral citation (e.g. '[2008] NSWSC 323'). Returns a URL that opens jade.io with the citation search. jade.io does not expose a public search API, so this provides a direct link for the user.",
+      inputSchema: jadeLookupShape,
+    },
+    async (rawInput) => {
+      const { citation } = jadeLookupParser.parse(rawInput);
+      const lookupUrl = buildCitationLookupUrl(citation);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              { citation, jadeUrl: lookupUrl },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
     },
   );
 
