@@ -24,7 +24,9 @@ export interface Config {
 }
 
 /**
- * Load configuration from environment variables with defaults
+ * Load configuration from environment variables with sensible defaults.
+ *
+ * @returns A fully-populated {@link Config} object
  */
 export function loadConfig(): Config {
   return {

@@ -206,6 +206,23 @@ function buildSearchParams(query: string, options: SearchOptions): SearchParams 
   };
 }
 
+/**
+ * Searches AustLII for Australian and New Zealand case law or legislation.
+ *
+ * @param query - The search query string (case name, topic, or citation)
+ * @param options - Search configuration options
+ * @returns Promise resolving to an array of search results
+ * @throws {Error} If the AustLII search request fails
+ *
+ * @example
+ * ```typescript
+ * const results = await searchAustLii("negligence duty of care", {
+ *   type: "case",
+ *   jurisdiction: "cth",
+ *   limit: 10,
+ * });
+ * ```
+ */
 export async function searchAustLii(
   query: string,
   options: SearchOptions,

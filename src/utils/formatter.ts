@@ -16,6 +16,13 @@ function ensureContent(text: string): CallToolResult["content"] {
     : [{ type: "text", text: "" }];
 }
 
+/**
+ * Formats an array of search results into the requested output format.
+ *
+ * @param results - Search results to format
+ * @param format - Desired output format (json, text, markdown, or html)
+ * @returns An MCP {@link CallToolResult} containing the formatted content
+ */
 export function formatSearchResults(
   results: SearchResult[],
   format: ResponseFormat,
@@ -67,6 +74,13 @@ export function formatSearchResults(
   }
 }
 
+/**
+ * Formats a fetched document response into the requested output format.
+ *
+ * @param response - The fetch response containing the document text
+ * @param format - Desired output format (json, text, markdown, or html)
+ * @returns An MCP {@link CallToolResult} containing the formatted content
+ */
 export function formatFetchResponse(
   response: FetchResponse,
   format: ResponseFormat,

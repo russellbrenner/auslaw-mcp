@@ -368,9 +368,31 @@ All configuration can be customized via environment variables:
 
 See [config.yaml](config.yaml) for defaults and `.env.example` for a template.
 
+## Data Sources and Attribution
+
+This project retrieves legal data from publicly accessible databases.
+
+### AustLII (Australasian Legal Information Institute)
+- Website: https://www.austlii.edu.au
+- Terms of Use: https://www.austlii.edu.au/austlii/terms.html
+- AustLII provides free access to Australian and New Zealand legal materials
+
+### jade.io
+- Users must have their own jade.io subscription
+- This tool does not bypass jade.io's access controls
+- Respects jade.io's terms of service
+
+### Fair Use
+
+Please use this tool responsibly:
+- Implement reasonable delays between requests
+- Cache results when appropriate
+- Don't overload public legal databases
+- Consider [supporting AustLII](https://www.austlii.edu.au/austlii/sponsors.html) through donations
+
 ## Contributing
 
-See [AGENTS.md](AGENTS.md) for AI agent instructions and development guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full contribution guidelines and [AGENTS.md](AGENTS.md) for AI agent instructions.
 
 **Key principles**:
 - Primary sources only (no journal articles)

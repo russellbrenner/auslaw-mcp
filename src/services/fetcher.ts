@@ -137,6 +137,16 @@ function extractTextFromHtml(html: string, url?: string): string {
   return bodyText.replace(/\s+/g, " ").trim();
 }
 
+/**
+ * Fetches a legal document from a URL and extracts its text content.
+ *
+ * Supports HTML pages, PDF documents, and plain text. For scanned PDFs
+ * with minimal extractable text the function falls back to Tesseract OCR.
+ *
+ * @param url - Absolute URL of the document to fetch
+ * @returns Promise resolving to a {@link FetchResponse} with extracted text
+ * @throws {Error} If the network request fails or the content type is unsupported
+ */
 export async function fetchDocumentText(url: string): Promise<FetchResponse> {
   try {
     const response = await axios.get(url, {
