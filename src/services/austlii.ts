@@ -14,8 +14,28 @@ export interface SearchResult {
   type: "case" | "legislation";
 }
 
-export type Jurisdiction = "cth" | "vic" | "nsw" | "qld" | "sa" | "wa" | "tas" | "nt" | "act" | "federal" | "nz" | "other";
-export type SearchMethod = "auto" | "title" | "phrase" | "all" | "any" | "near" | "legis" | "boolean";
+export type Jurisdiction =
+  | "cth"
+  | "vic"
+  | "nsw"
+  | "qld"
+  | "sa"
+  | "wa"
+  | "tas"
+  | "nt"
+  | "act"
+  | "federal"
+  | "nz"
+  | "other";
+export type SearchMethod =
+  | "auto"
+  | "title"
+  | "phrase"
+  | "all"
+  | "any"
+  | "near"
+  | "legis"
+  | "boolean";
 
 export interface SearchOptions {
   jurisdiction?: Jurisdiction;
@@ -30,9 +50,10 @@ const AUSTLII_SEARCH_BASE = "https://www.austlii.edu.au/cgi-bin/sinosrch.cgi";
 
 // Browser-like headers required by AustLII
 const AUSTLII_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  "Referer": "https://www.austlii.edu.au/forms/search1.html",
-  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Referer: "https://www.austlii.edu.au/forms/search1.html",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   "Accept-Language": "en-AU,en;q=0.9",
 };
 
@@ -53,17 +74,17 @@ function extractReportedCitation(text: string): string | undefined {
   // (YYYY) Volume REPORTER Page
   // Examples: (2024) 350 ALR 123, (2024) 98 ALJR 456, (1992) 175 CLR 1
   const patterns = [
-    /\((\d{4})\)\s+(\d+)\s+([A-Z]{2,6})\s+(\d+)/,  // (2024) 350 ALR 123
-    /\[(\d{4})\]\s+(\d+)\s+([A-Z]{2,6})\s+(\d+)/,  // [2024] 350 ALR 123
+    /\((\d{4})\)\s+(\d+)\s+([A-Z]{2,6})\s+(\d+)/, // (2024) 350 ALR 123
+    /\[(\d{4})\]\s+(\d+)\s+([A-Z]{2,6})\s+(\d+)/, // [2024] 350 ALR 123
   ];
-  
+
   for (const pattern of patterns) {
     const match = text.match(pattern);
     if (match) {
       return match[0];
     }
   }
-  
+
   return undefined;
 }
 
@@ -150,7 +171,9 @@ function buildSearchParams(query: string, options: SearchOptions): SearchParams 
     }
   } else {
     // Australian jurisdictions
-    const juriPath = options.jurisdiction ? australianJurisdictions[options.jurisdiction] : undefined;
+    const juriPath = options.jurisdiction
+      ? australianJurisdictions[options.jurisdiction]
+      : undefined;
 
     // Set mask_path based on type and jurisdiction
     if (options.type === "case") {
@@ -264,7 +287,8 @@ export async function searchAustLii(
         // Extract jurisdiction from URL (Australian and New Zealand)
         const auJurisdictionMatch = url.match(/\/au\/cases\/(cth|vic|nsw|qld|sa|wa|tas|nt|act)\//i);
         const nzJurisdictionMatch = url.match(/\/nz\/cases\//i);
-        const jurisdiction = auJurisdictionMatch?.[1]?.toLowerCase() || (nzJurisdictionMatch ? "nz" : undefined);
+        const jurisdiction =
+          auJurisdictionMatch?.[1]?.toLowerCase() || (nzJurisdictionMatch ? "nz" : undefined);
 
         // Extract date from the meta section
         const $meta = $li.find("p.meta");
@@ -315,19 +339,25 @@ export async function searchAustLii(
  */
 function boostTitleMatches(results: SearchResult[], query: string): SearchResult[] {
   // Extract case name patterns from query
-  const normalizedQuery = query.toLowerCase().replace(/[^\w\s]/g, ' ').trim();
-  const queryWords = new Set(normalizedQuery.split(/\s+/).filter(w => w.length > 2));
+  const normalizedQuery = query
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .trim();
+  const queryWords = new Set(normalizedQuery.split(/\s+/).filter((w) => w.length > 2));
 
   // Score each result based on title match
-  const scored = results.map(result => {
-    const normalizedTitle = result.title.toLowerCase().replace(/[^\w\s]/g, ' ').trim();
+  const scored = results.map((result) => {
+    const normalizedTitle = result.title
+      .toLowerCase()
+      .replace(/[^\w\s]/g, " ")
+      .trim();
     const titleWords = normalizedTitle.split(/\s+/);
 
     let score = 0;
 
     // Count matching words
-    const matchingWords = titleWords.filter(word =>
-      word.length > 2 && queryWords.has(word)
+    const matchingWords = titleWords.filter(
+      (word) => word.length > 2 && queryWords.has(word),
     ).length;
 
     score += matchingWords * 10;
@@ -338,7 +368,7 @@ function boostTitleMatches(results: SearchResult[], query: string): SearchResult
     }
 
     // Bonus if title starts with similar text
-    const queryStart = normalizedQuery.split(/\s+/).slice(0, 3).join(' ');
+    const queryStart = normalizedQuery.split(/\s+/).slice(0, 3).join(" ");
     if (normalizedTitle.startsWith(queryStart) && queryStart.length > 5) {
       score += 30;
     }
@@ -364,5 +394,5 @@ function boostTitleMatches(results: SearchResult[], query: string): SearchResult
 
   // Sort by score (descending) and return results
   scored.sort((a, b) => b.score - a.score);
-  return scored.map(s => s.result);
+  return scored.map((s) => s.result);
 }
