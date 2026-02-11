@@ -75,7 +75,6 @@ const COURT_TO_JURISDICTION: Record<string, string> = {
   WASC: "wa",
   WASCA: "wa",
   WADC: "wa",
-  TASSSC: "tas",
   TASSC: "tas",
   TASFC: "tas",
   NTSC: "nt",
