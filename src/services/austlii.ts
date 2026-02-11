@@ -1,5 +1,6 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
+import { config } from "../config.js";
 
 export interface SearchResult {
   title: string;
@@ -45,8 +46,6 @@ export interface SearchOptions {
   method?: SearchMethod;
   offset?: number; // For pagination - skip first N results
 }
-
-const AUSTLII_SEARCH_BASE = "https://www.austlii.edu.au/cgi-bin/sinosrch.cgi";
 
 // Browser-like headers required by AustLII
 const AUSTLII_HEADERS = {
@@ -217,7 +216,7 @@ export async function searchAustLii(
     // Determine sort mode (auto-detect or use explicit setting)
     const sortMode = determineSortMode(query, options);
 
-    const searchUrl = new URL(AUSTLII_SEARCH_BASE);
+    const searchUrl = new URL(config.austlii.searchBase);
     searchUrl.searchParams.set("method", searchParams.method);
     searchUrl.searchParams.set("query", searchParams.query);
     searchUrl.searchParams.set("meta", searchParams.meta);
@@ -241,8 +240,8 @@ export async function searchAustLii(
     }
 
     const response = await axios.get(searchUrl.toString(), {
-      headers: AUSTLII_HEADERS,
-      timeout: 60000, // 60 second timeout - AustLII can be slow
+      headers: getAustLiiHeaders(),
+      timeout: config.austlii.timeout,
     });
 
     const html = response.data;

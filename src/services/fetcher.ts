@@ -5,6 +5,7 @@ import { pdf } from "pdf-parse";
 import tesseract from "node-tesseract-ocr";
 import * as tmp from "tmp";
 import * as fs from "fs/promises";
+import { config } from "../config.js";
 
 export interface FetchResponse {
   text: string;
@@ -43,13 +44,13 @@ async function performOcr(buffer: Buffer): Promise<{ text: string; ocrUsed: bool
   try {
     await fs.writeFile(tmpFile.name, buffer);
 
-    const config = {
-      lang: "eng",
-      oem: 1,
-      psm: 3,
+    const ocrConfig = {
+      lang: config.ocr.language,
+      oem: config.ocr.oem,
+      psm: config.ocr.psm,
     };
 
-    const text = await tesseract.recognize(tmpFile.name, config);
+    const text = await tesseract.recognize(tmpFile.name, ocrConfig);
     return { text: text.trim(), ocrUsed: true };
   } catch (error) {
     throw new Error(`OCR failed: ${error instanceof Error ? error.message : String(error)}`);
