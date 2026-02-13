@@ -195,7 +195,7 @@ describe("Search relevance and sorting", () => {
    * Should detect "X v Y" pattern and use relevance sorting
    */
   it("should find specific case when searching by name (auto mode)", async () => {
-    const results = await searchAustLii("Donoghue v Stevenson", {
+    const results = await searchAustLii("Mabo v Queensland", {
       type: "case",
       limit: 10,
       sortBy: "auto", // Should auto-detect case name and use relevance
@@ -209,11 +209,11 @@ describe("Search relevance and sorting", () => {
 
     // Should contain both party names (at least one result in top 5)
     const topResults = results.slice(0, 5);
-    const hasDonoghue = topResults.some((r) => r.title.toLowerCase().includes("donoghue"));
-    const hasStevenson = topResults.some((r) => r.title.toLowerCase().includes("stevenson"));
+    const hasMabo = topResults.some((r) => r.title.toLowerCase().includes("mabo"));
+    const hasQueensland = topResults.some((r) => r.title.toLowerCase().includes("queensland"));
 
     // At least one of the top results should mention the parties
-    expect(hasDonoghue || hasStevenson).toBe(true);
+    expect(hasMabo || hasQueensland).toBe(true);
   }, 30000);
 
   /**
