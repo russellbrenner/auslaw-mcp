@@ -1,5 +1,7 @@
 import axios from "axios";
 import type { SearchResult, SearchOptions } from "./austlii.js";
+import { searchAustLii } from "./austlii.js";
+import { logger } from "../utils/logger.js";
 
 /**
  * jade.io integration service
@@ -319,24 +321,198 @@ export function enrichWithJadeLinks(
   });
 }
 
+/** Maximum number of jade.io articles to resolve concurrently */
+const MAX_JADE_RESOLUTIONS = 5;
+
 /**
- * Placeholder for future jade.io search integration.
- * Currently returns an empty array since jade.io does not expose
- * a public search API.
+ * Searches for Australian legal materials via jade.io.
  *
- * When/if jade.io provides API access, this function will perform
- * searches and return results in the standard SearchResult format.
+ * jade.io does not expose a public search API (it is a GWT SPA), so this
+ * function works by:
+ *   1. Searching AustLII for the query to obtain relevant results
+ *   2. Enriching results that have neutral citations with jade.io URLs
+ *   3. Attempting to resolve jade.io article metadata for top results
+ *   4. Returning successfully resolved results with `source: "jade"`
  *
- * @param _query - Search query string
- * @param _options - Search options (jurisdiction, limit, etc.)
- * @returns Empty array (no public API available)
+ * @param query   - Search query string
+ * @param options - Search options (jurisdiction, limit, etc.)
+ * @returns Array of jade.io search results (may be empty if resolution fails)
  */
 export async function searchJade(
-  _query: string,
-  _options: SearchOptions,
+  query: string,
+  options: SearchOptions,
 ): Promise<SearchResult[]> {
-  // jade.io does not expose a public search API.
-  // This function is a placeholder for future integration.
-  // When API access is available, implement search here.
-  return [];
+  try {
+    // Step 1: Search AustLII to get candidate results
+    const austliiResults = await searchAustLii(query, options);
+
+    if (austliiResults.length === 0) {
+      logger.debug("searchJade: no AustLII results to cross-reference");
+      return [];
+    }
+
+    // Step 2: Filter to results with neutral citations (required for jade.io matching)
+    const withCitations = austliiResults.filter((r) => r.neutralCitation);
+    if (withCitations.length === 0) {
+      logger.debug("searchJade: no results with neutral citations");
+      return [];
+    }
+
+    // Step 3: Resolve jade.io articles for top results (limit to avoid slow requests)
+    const toResolve = withCitations.slice(0, MAX_JADE_RESOLUTIONS);
+    logger.debug(`searchJade: resolving ${toResolve.length} jade.io articles`);
+
+    const settlements = await Promise.allSettled(
+      toResolve.map(async (result) => {
+        const article = await searchJadeByCitation(result.neutralCitation!);
+        if (article) {
+          return articleToSearchResult(article, result.type);
+        }
+        return undefined;
+      }),
+    );
+
+    // Step 4: Collect successfully resolved results
+    const jadeResults: SearchResult[] = [];
+    for (const settlement of settlements) {
+      if (settlement.status === "fulfilled" && settlement.value) {
+        jadeResults.push(settlement.value);
+      }
+    }
+
+    logger.debug(`searchJade: resolved ${jadeResults.length} jade.io articles`);
+    return jadeResults;
+  } catch (error) {
+    logger.warn(`searchJade: search failed: ${error instanceof Error ? error.message : String(error)}`);
+    return [];
+  }
+}
+
+// ── Citation Search ────────────────────────────────────────────────────
+
+/**
+ * Searches jade.io for an article matching a neutral citation.
+ *
+ * Constructs a jade.io search URL for the citation and fetches the page.
+ * If jade.io redirects or renders a result page with a valid article title,
+ * the article metadata is extracted from the HTML `<title>` tag.
+ *
+ * @param citation - Neutral citation string, e.g. "[2008] NSWSC 323"
+ * @returns Resolved article metadata, or undefined if not found
+ */
+export async function searchJadeByCitation(
+  citation: string,
+): Promise<JadeArticle | undefined> {
+  const searchUrl = buildSearchUrl(citation);
+
+  try {
+    const response = await axios.get(searchUrl, {
+      headers: {
+        "User-Agent": JADE_USER_AGENT,
+        Accept: "text/html",
+      },
+      timeout: JADE_TIMEOUT,
+      maxContentLength: 50 * 1024,
+      maxRedirects: 5,
+    });
+
+    const html: string =
+      typeof response.data === "string"
+        ? response.data
+        : String(response.data);
+
+    // Extract <title> tag content
+    const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    const rawTitle = titleMatch?.[1]?.replace(/\s+/g, " ").trim();
+
+    if (!rawTitle || rawTitle.startsWith(JADE_GENERIC_TITLE)) {
+      return undefined;
+    }
+
+    const parsed = parseTitleMetadata(rawTitle);
+
+    // Try to extract article ID from the final URL (after redirects)
+    const finalUrl =
+      typeof response.request?.res?.responseUrl === "string"
+        ? response.request.res.responseUrl
+        : searchUrl;
+    const articleId = extractArticleId(finalUrl);
+
+    return {
+      id: articleId ?? 0,
+      title: parsed.title,
+      neutralCitation: parsed.neutralCitation,
+      jurisdiction: parsed.jurisdiction,
+      year: parsed.year,
+      url: articleId ? buildArticleUrl(articleId) : finalUrl,
+      accessible: true,
+    };
+  } catch (error) {
+    logger.debug(
+      `searchJadeByCitation: failed for "${citation}": ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return undefined;
+  }
+}
+
+// ── Result Merging & Deduplication ─────────────────────────────────────
+
+/**
+ * Deduplicates an array of search results by neutral citation.
+ *
+ * When multiple results share the same neutral citation, jade.io results
+ * are preferred over AustLII results (jade.io provides better formatting).
+ * Results without neutral citations are always kept.
+ *
+ * @param results - Array of search results from mixed sources
+ * @returns Deduplicated array preserving original order
+ */
+export function deduplicateResults(results: SearchResult[]): SearchResult[] {
+  const seen = new Map<string, SearchResult>();
+  const output: SearchResult[] = [];
+
+  for (const result of results) {
+    if (!result.neutralCitation) {
+      // No citation to deduplicate on — always include
+      output.push(result);
+      continue;
+    }
+
+    const key = result.neutralCitation;
+    const existing = seen.get(key);
+
+    if (!existing) {
+      seen.set(key, result);
+      output.push(result);
+    } else if (result.source === "jade" && existing.source !== "jade") {
+      // Replace AustLII result with jade.io result
+      const idx = output.indexOf(existing);
+      if (idx !== -1) {
+        output[idx] = result;
+      }
+      seen.set(key, result);
+    }
+    // Otherwise skip duplicate (keep first / jade result)
+  }
+
+  return output;
+}
+
+/**
+ * Merges search results from AustLII and jade.io, deduplicates by neutral
+ * citation, and returns the combined list.
+ *
+ * jade.io results are preferred when the same citation exists in both
+ * result sets (jade.io offers richer formatting and metadata).
+ *
+ * @param austliiResults - Results from AustLII search
+ * @param jadeResults    - Results from jade.io resolution
+ * @returns Merged and deduplicated results
+ */
+export function mergeSearchResults(
+  austliiResults: SearchResult[],
+  jadeResults: SearchResult[],
+): SearchResult[] {
+  // Place jade results first so they win during deduplication
+  return deduplicateResults([...jadeResults, ...austliiResults]);
 }

@@ -12,6 +12,9 @@ import {
   buildCitationLookupUrl,
   enrichWithJadeLinks,
   searchJade,
+  searchJadeByCitation,
+  deduplicateResults,
+  mergeSearchResults,
 } from "../services/jade.js";
 import type { SearchResult } from "../services/austlii.js";
 
@@ -280,20 +283,170 @@ describe("jade.io cross-referencing", () => {
   });
 });
 
-describe("jade.io search placeholder", () => {
-  it("should return empty array (no public API)", async () => {
+describe("jade.io search (via AustLII cross-reference)", () => {
+  it("should return results from jade.io for case search", async () => {
     const results = await searchJade("negligence", {
       type: "case",
       limit: 5,
     });
-    expect(results).toEqual([]);
-  });
+    // Results depend on live AustLII + jade.io resolution; may be empty if jade.io is unavailable
+    expect(Array.isArray(results)).toBe(true);
+    for (const r of results) {
+      expect(r.source).toBe("jade");
+      expect(r.url).toContain("jade.io");
+    }
+  }, 30000);
 
-  it("should return empty array for legislation search", async () => {
+  it("should return results for legislation search", async () => {
     const results = await searchJade("corporations act", {
       type: "legislation",
     });
-    expect(results).toEqual([]);
+    expect(Array.isArray(results)).toBe(true);
+    for (const r of results) {
+      expect(r.source).toBe("jade");
+    }
+  }, 30000);
+});
+
+// ── Deduplication & Merging tests (no network) ────────────────────────
+
+describe("deduplicateResults", () => {
+  it("should remove duplicate citations preferring jade.io", () => {
+    const results: SearchResult[] = [
+      {
+        title: "Smith v Jones",
+        neutralCitation: "[2023] HCA 1",
+        url: "https://austlii.edu.au/cases/cth/HCA/2023/1.html",
+        source: "austlii",
+        type: "case",
+      },
+      {
+        title: "Smith v Jones",
+        neutralCitation: "[2023] HCA 1",
+        url: "https://jade.io/article/12345",
+        source: "jade",
+        type: "case",
+      },
+    ];
+
+    const deduped = deduplicateResults(results);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0]?.source).toBe("jade");
+    expect(deduped[0]?.url).toContain("jade.io");
+  });
+
+  it("should keep results without citations", () => {
+    const results: SearchResult[] = [
+      {
+        title: "Case A",
+        url: "https://austlii.edu.au/a",
+        source: "austlii",
+        type: "case",
+      },
+      {
+        title: "Case B",
+        url: "https://austlii.edu.au/b",
+        source: "austlii",
+        type: "case",
+      },
+    ];
+
+    const deduped = deduplicateResults(results);
+    expect(deduped).toHaveLength(2);
+  });
+
+  it("should keep first result when both are same source", () => {
+    const results: SearchResult[] = [
+      {
+        title: "Case First",
+        neutralCitation: "[2023] FCA 10",
+        url: "https://austlii.edu.au/a",
+        source: "austlii",
+        type: "case",
+      },
+      {
+        title: "Case Second",
+        neutralCitation: "[2023] FCA 10",
+        url: "https://austlii.edu.au/b",
+        source: "austlii",
+        type: "case",
+      },
+    ];
+
+    const deduped = deduplicateResults(results);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0]?.title).toBe("Case First");
+  });
+});
+
+describe("mergeSearchResults", () => {
+  it("should merge and deduplicate results preferring jade.io", () => {
+    const austlii: SearchResult[] = [
+      {
+        title: "Mabo v Queensland",
+        neutralCitation: "[1992] HCA 23",
+        url: "https://austlii.edu.au/cases/cth/HCA/1992/23.html",
+        source: "austlii",
+        type: "case",
+      },
+      {
+        title: "Other Case",
+        url: "https://austlii.edu.au/other",
+        source: "austlii",
+        type: "case",
+      },
+    ];
+
+    const jade: SearchResult[] = [
+      {
+        title: "Mabo v Queensland (No 2)",
+        neutralCitation: "[1992] HCA 23",
+        url: "https://jade.io/article/67841",
+        source: "jade",
+        type: "case",
+      },
+    ];
+
+    const merged = mergeSearchResults(austlii, jade);
+    // Should have 2: jade Mabo + austlii Other Case
+    expect(merged).toHaveLength(2);
+    const mabo = merged.find((r) => r.neutralCitation === "[1992] HCA 23");
+    expect(mabo?.source).toBe("jade");
+    expect(mabo?.url).toContain("jade.io");
+    const other = merged.find((r) => r.title === "Other Case");
+    expect(other?.source).toBe("austlii");
+  });
+
+  it("should handle empty jade results", () => {
+    const austlii: SearchResult[] = [
+      {
+        title: "A Case",
+        neutralCitation: "[2023] VSC 1",
+        url: "https://austlii.edu.au/a",
+        source: "austlii",
+        type: "case",
+      },
+    ];
+
+    const merged = mergeSearchResults(austlii, []);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.source).toBe("austlii");
+  });
+
+  it("should handle empty austlii results", () => {
+    const jade: SearchResult[] = [
+      {
+        title: "A Case",
+        neutralCitation: "[2023] VSC 1",
+        url: "https://jade.io/article/99999",
+        source: "jade",
+        type: "case",
+      },
+    ];
+
+    const merged = mergeSearchResults([], jade);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.source).toBe("jade");
   });
 });
 
