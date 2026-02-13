@@ -15,6 +15,8 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
+    "docs": "typedoc",
+    "docs:serve": "npx serve docs/api",
     "prepare": "husky"
   },
   "keywords": [
@@ -51,6 +53,7 @@
     "prettier": "^3.8.1",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
+    "typedoc": "^0.28.16",
     "typescript": "^5.9.3",
     "vitest": "^2.1.3"
   },
