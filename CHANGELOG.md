@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- jade.io search integration via AustLII cross-referencing (no API access required)
+  - `search_jade` MCP tool for searching jade.io cases/legislation
+  - `search_jade_by_citation` MCP tool for finding jade.io articles by neutral citation
+  - `searchJade()` function: searches by cross-referencing AustLII results with jade.io metadata
+  - `searchJadeByCitation()` function: resolves jade.io articles by neutral citation
+  - `deduplicateResults()` function: deduplicates by neutral citation, preferring jade.io
+  - `mergeSearchResults()` function: merges results from AustLII and jade.io
+- `includeJade` parameter on `search_cases` and `search_legislation` tools for multi-source merging
+- Maximum 5 concurrent jade.io article resolutions to avoid overwhelming the server
+- Graceful fallback: if jade.io resolution fails, AustLII results are still returned
 - ESLint and Prettier for code quality enforcement
 - SECURITY.md for responsible vulnerability disclosure
 - CONTRIBUTING.md with development guidelines

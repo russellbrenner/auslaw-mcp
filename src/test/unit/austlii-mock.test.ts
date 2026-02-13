@@ -69,9 +69,7 @@ describe("searchAustLii (mocked)", () => {
     mockedAxios.get.mockRejectedValue(axiosError);
     mockedAxios.isAxiosError.mockReturnValue(true);
 
-    await expect(
-      searchAustLii("negligence", { type: "case" }),
-    ).rejects.toThrow(AustLiiError);
+    await expect(searchAustLii("negligence", { type: "case" })).rejects.toThrow(AustLiiError);
   });
 
   it("should build correct search URL with jurisdiction filter", async () => {

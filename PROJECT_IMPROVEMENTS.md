@@ -98,6 +98,15 @@ npm install --save-dev eslint @typescript-eslint/parser @typescript-eslint/eslin
 
 Create `.eslintrc.json`:
 
+````json
+{
+  "parser": "@typescript-eslint/parser",
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "prettier"
+  ],
+
 ```json
 {
   "parser": "@typescript-eslint/parser",
@@ -112,7 +121,7 @@ Create `.eslintrc.json`:
     "@typescript-eslint/explicit-function-return-type": "off"
   }
 }
-```
+````
 
 Create `.prettierrc.json`:
 
@@ -145,6 +154,7 @@ Update `package.json`:
 - [x] Create configuration files
 - [x] Run `npm run lint:fix` and `npm run format`
 - [x] Add linting step to CI/CD workflow
+- [ ] Configure pre-commit hooks (husky + lint-staged)
 - [x] Configure pre-commit hooks (husky + lint-staged)
 
 #### 1.3 Code Documentation
@@ -161,6 +171,10 @@ Update `package.json`:
 **Recommendation:**
 Add JSDoc comments to all exported functions and interfaces:
 
+`````typescript
+/**
+ * Searches AustLII for Australian and New Zealand case law or legislation.
+ * 
 ````typescript
 /**
  * Searches AustLII for Australian and New Zealand case law or legislation.
@@ -169,6 +183,7 @@ Add JSDoc comments to all exported functions and interfaces:
  * @param options - Search configuration options
  * @returns Promise resolving to array of search results
  * @throws {Error} If AustLII search fails or returns invalid data
+ * 
  *
  * @example
  * ```typescript
@@ -185,7 +200,15 @@ export async function searchAustLii(
 ): Promise<SearchResult[]> {
   // Implementation...
 }
-````
+`````
+
+**Action Items:**
+options: SearchOptions,
+): Promise<SearchResult[]> {
+// Implementation...
+}
+
+`````
 
 **Action Items:**
 
@@ -193,6 +216,7 @@ export async function searchAustLii(
 - [x] Document complex internal functions
 - [x] Include `@param`, `@returns`, `@throws` tags
 - [x] Add usage examples where helpful
+- [ ] Configure TypeDoc for API documentation generation
 - [x] Configure TypeDoc for API documentation generation
 
 #### 1.4 Test Coverage
@@ -200,7 +224,6 @@ export async function searchAustLii(
 **Issue:** No test coverage reporting configured
 
 **Current State:**
-
 - 18 integration tests (good coverage of main scenarios)
 - No unit tests for individual functions
 - No coverage metrics
@@ -209,7 +232,6 @@ export async function searchAustLii(
 **Recommendation:**
 
 1. Add coverage reporting to `package.json`:
-
 ```json
 {
   "scripts": {
@@ -221,12 +243,13 @@ export async function searchAustLii(
 ```
 
 2. Install coverage tools:
-
 ```bash
 npm install --save-dev @vitest/coverage-v8
 ```
 
 3. Update `vitest.config.ts` (create if doesn't exist):
+```typescript
+import { defineConfig } from 'vitest/config';
 
 ```typescript
 import { defineConfig } from "vitest/config";
@@ -234,6 +257,11 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: ['node_modules/', 'dist/', 'src/test/']
+    }
+  }
       provider: "v8",
       reporter: ["text", "json", "html"],
       exclude: ["node_modules/", "dist/", "src/test/"],
@@ -243,6 +271,18 @@ export default defineConfig({
 ```
 
 4. Add unit tests for utility functions:
+```typescript
+// src/test/unit/austlii.test.ts
+describe('isCaseNameQuery', () => {
+  it('should detect "X v Y" pattern', () => {
+    expect(isCaseNameQuery("Donoghue v Stevenson")).toBe(true);
+  });
+
+  it('should detect "Re X" pattern', () => {
+    expect(isCaseNameQuery("Re Wakim")).toBe(true);
+  });
+
+  it('should not detect topic searches', () => {
 
 ```typescript
 // src/test/unit/austlii.test.ts
@@ -262,11 +302,12 @@ describe("isCaseNameQuery", () => {
 ```
 
 **Action Items:**
-
 - [x] Configure Vitest coverage reporting
 - [x] Add unit tests for utility functions
 - [x] Add unit tests for parsing functions
 - [ ] Target 80%+ code coverage
+- [ ] Add coverage reporting to CI/CD
+- [ ] Consider mock-based tests for network isolation
 - [x] Add coverage reporting to CI/CD
 - [x] Consider mock-based tests for network isolation
 
@@ -275,7 +316,6 @@ describe("isCaseNameQuery", () => {
 **Issue:** Inconsistent logging approach
 
 **Current State:**
-
 - Uses `console.warn` for OCR fallback messages
 - Uses `console.error` in main error handler
 - No structured logging
@@ -302,18 +342,21 @@ class Logger {
 
   debug(message: string, meta?: Record<string, unknown>) {
     if (this.level <= LogLevel.DEBUG) {
+      console.debug(`[DEBUG] ${message}`, meta || '');
       console.debug(`[DEBUG] ${message}`, meta || "");
     }
   }
 
   info(message: string, meta?: Record<string, unknown>) {
     if (this.level <= LogLevel.INFO) {
+      console.log(`[INFO] ${message}`, meta || '');
       console.log(`[INFO] ${message}`, meta || "");
     }
   }
 
   warn(message: string, meta?: Record<string, unknown>) {
     if (this.level <= LogLevel.WARN) {
+      console.warn(`[WARN] ${message}`, meta || '');
       console.warn(`[WARN] ${message}`, meta || "");
     }
   }
@@ -326,11 +369,14 @@ class Logger {
 }
 
 export const logger = new Logger(
+  process.env.LOG_LEVEL ? parseInt(process.env.LOG_LEVEL) : LogLevel.INFO
   process.env.LOG_LEVEL ? parseInt(process.env.LOG_LEVEL) : LogLevel.INFO,
 );
 ```
 
 **Action Items:**
+- [x] Create logger utility
+- [x] Replace console.* calls with logger
 
 - [x] Create logger utility
 - [x] Replace console.\* calls with logger
@@ -377,7 +423,6 @@ export const logger = new Logger(
 Add the following files:
 
 1. **CONTRIBUTING.md**
-
 ```markdown
 # Contributing to AusLaw MCP
 
@@ -416,7 +461,6 @@ See [AGENTS.md](AGENTS.md) for detailed development guidelines.
 ```
 
 2. **SECURITY.md**
-
 ```markdown
 # Security Policy
 
@@ -437,21 +481,18 @@ We will respond within 48 hours and provide updates as the issue is addressed.
 ## Security Considerations
 
 This tool:
-
 - Makes HTTP requests to AustLII and jade.io
 - Does not store user data
 - Does not require authentication
 - Runs locally as an MCP server
 
 Users should:
-
 - Keep dependencies updated
 - Review source code before running
 - Use in trusted environments only
 ```
 
 3. **CHANGELOG.md**
-
 ```markdown
 # Changelog
 
@@ -463,7 +504,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-
 - Initial release of AusLaw MCP server
 - AustLII search integration
 - Intelligent search relevance
@@ -483,12 +523,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2024-XX-XX
 
 ### Added
-
 - Initial MVP release
 ```
 
 **Action Items:**
-
 - [x] Create CONTRIBUTING.md
 - [x] Create SECURITY.md (update with real contact email)
 - [x] Create CHANGELOG.md
@@ -506,7 +544,6 @@ npm install --save-dev typedoc
 ```
 
 Add to `package.json`:
-
 ```json
 {
   "scripts": {
@@ -517,7 +554,6 @@ Add to `package.json`:
 ```
 
 Create `typedoc.json`:
-
 ```json
 {
   "entryPoints": ["src/index.ts"],
@@ -530,6 +566,9 @@ Create `typedoc.json`:
 ```
 
 **Action Items:**
+- [ ] Install TypeDoc
+- [ ] Configure TypeDoc
+- [ ] Generate API documentation
 
 - [x] Install TypeDoc
 - [x] Configure TypeDoc
@@ -544,6 +583,7 @@ Create `typedoc.json`:
 **Recommendation:**
 Add more detailed installation section to README.md:
 
+```markdown
 ````markdown
 ## Installation
 
@@ -556,11 +596,16 @@ Add more detailed installation section to README.md:
 #### Installing Tesseract (Optional)
 
 **macOS:**
+```bash
+brew install tesseract
+```
+
+**Ubuntu/Debian:**
 
 ```bash
 brew install tesseract
 ```
-````
+`````
 
 **Ubuntu/Debian:**
 
@@ -606,9 +651,12 @@ npm test
 **Issue:** OCR fails
 **Solution:** Ensure Tesseract is installed and in your PATH.
 
-````
+```
+
+```
 
 **Action Items:**
+
 - [x] Enhance installation instructions
 - [x] Add prerequisites section
 - [x] Add troubleshooting section
@@ -621,12 +669,13 @@ npm test
 **Recommendation:**
 Add examples section to README.md:
 
-```markdown
+````markdown
 ## Configuration Examples
 
 ### Claude Desktop (macOS)
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
 ```json
 {
   "mcpServers": {
@@ -639,12 +688,14 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
     }
   }
 }
+```
+````
+
 ````
 
 ### Cursor IDE
 
 Edit `.cursor/config.json` in your workspace:
-
 ```json
 {
   "mcp": {
@@ -661,16 +712,17 @@ Edit `.cursor/config.json` in your workspace:
 ### Development Mode
 
 For hot-reload during development:
-
 ```bash
 npm run dev
 ```
 
 Then configure your MCP client to connect to stdio at the dev process.
+```
 
 ````
 
 **Action Items:**
+
 - [x] Add configuration examples for major MCP clients
 - [x] Document environment variables
 - [x] Add development mode instructions
@@ -711,7 +763,13 @@ npm install --save-dev license-checker
     "licenses:full": "license-checker --json > licenses.json"
   }
 }
-````
+```
+
+Create `LICENSE-THIRD-PARTY.md`:
+
+```markdown
+
+```
 
 Create `LICENSE-THIRD-PARTY.md`:
 
@@ -733,6 +791,14 @@ To verify licenses:
 ```bash
 npm run licenses
 ```
+
+Last verified: [DATE]
+
+````
+
+```bash
+npm run licenses
+````
 ````
 
 Last verified: [DATE]
@@ -758,6 +824,10 @@ While not required for MIT license, consider adding headers to main source files
  * AusLaw MCP - Australian Legal Research MCP Server
  * Copyright (c) 2024 Russell Brenner
  * Licensed under the MIT License
+ *
+ * @file austlii.ts - AustLII search integration
+ */
+```
  *
  * @file austlii.ts - AustLII search integration
  */
@@ -986,6 +1056,7 @@ export class AustLiiError extends Error {
   constructor(
     message: string,
     public readonly statusCode?: number,
+    public readonly cause?: Error
     public readonly cause?: Error,
   ) {
     super(message);
@@ -997,6 +1068,7 @@ export class NetworkError extends Error {
   constructor(
     message: string,
     public readonly url: string,
+    public readonly cause?: Error
     public readonly cause?: Error,
   ) {
     super(message);
@@ -1008,6 +1080,7 @@ export class ParseError extends Error {
   constructor(
     message: string,
     public readonly content?: string,
+    public readonly cause?: Error
     public readonly cause?: Error,
   ) {
     super(message);
@@ -1019,6 +1092,7 @@ export class OcrError extends Error {
   constructor(
     message: string,
     public readonly filePath?: string,
+    public readonly cause?: Error
     public readonly cause?: Error,
   ) {
     super(message);
@@ -1086,6 +1160,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
+    - cron: '0 2 * * *'  # Daily at 2am UTC
     - cron: "0 2 * * *" # Daily at 2am UTC
   workflow_dispatch:
 
@@ -1095,6 +1170,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -1124,10 +1215,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
           cache: "npm"
 
       - name: Install dependencies
@@ -1162,6 +1268,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
           node-version: "20.x"
           cache: "npm"
 
@@ -1177,6 +1297,11 @@ jobs:
 ```
 
 **Action Items:**
+
+- [x] Consolidate CI workflows into single file
+- [x] Delete redundant workflow file
+- [x] Add security audit job
+- [ ] Add coverage upload
 
 - [x] Consolidate CI workflows into single file
 - [x] Delete redundant workflow file
@@ -1224,6 +1349,7 @@ name: Release
 on:
   push:
     tags:
+      - 'v*'
       - "v*"
 
 jobs:
@@ -1231,6 +1357,25 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run tests
+        run: npm test
+
 
     steps:
       - uses: actions/checkout@v4
@@ -1275,6 +1420,8 @@ jobs:
 ```
 
 **Action Items:**
+
+- [ ] Create release workflow
 
 - [x] Create release workflow
 - [x] Add release checklist to CONTRIBUTING.md
@@ -1376,6 +1523,11 @@ src/test/
 
 - [x] Split test file into multiple files by feature
 - [x] Create unit tests for pure functions
+- [ ] Create test fixtures for offline testing
+- [ ] Add mock-based tests for network isolation
+
+- [x] Split test file into multiple files by feature
+- [x] Create unit tests for pure functions
 - [x] Create test fixtures for offline testing
 - [x] Add mock-based tests for network isolation
 
@@ -1405,6 +1557,15 @@ export const mockAustLiiResponse = `
 `;
 
 // src/test/unit/austlii.test.ts
+import { vi } from 'vitest';
+import axios from 'axios';
+import { searchAustLii } from '../../services/austlii';
+import { mockAustLiiResponse } from '../fixtures/search-results';
+
+vi.mock('axios');
+
+describe('searchAustLii', () => {
+  it('should parse search results correctly', async () => {
 import { vi } from "vitest";
 import axios from "axios";
 import { searchAustLii } from "../../services/austlii";
@@ -1419,6 +1580,13 @@ describe("searchAustLii", () => {
       status: 200,
     });
 
+    const results = await searchAustLii('Mabo', {
+      type: 'case',
+      limit: 10
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0]?.title).toContain('Mabo');
     const results = await searchAustLii("Mabo", {
       type: "case",
       limit: 10,
@@ -1431,6 +1599,9 @@ describe("searchAustLii", () => {
 ```
 
 **Action Items:**
+
+- [ ] Create test fixtures for common responses
+- [ ] Add unit tests with mocked network calls
 
 - [x] Create test fixtures for common responses
 - [x] Add unit tests with mocked network calls
@@ -1446,6 +1617,18 @@ Add basic performance tests:
 
 ```typescript
 // src/test/performance/search-performance.test.ts
+import { describe, it, expect } from 'vitest';
+import { searchAustLii } from '../../services/austlii';
+
+describe('Search Performance', () => {
+  it('should complete simple search within 5 seconds', async () => {
+    const startTime = Date.now();
+
+    await searchAustLii('negligence', {
+      type: 'case',
+      limit: 10
+    });
+
 import { describe, it, expect } from "vitest";
 import { searchAustLii } from "../../services/austlii";
 
@@ -1462,6 +1645,11 @@ describe("Search Performance", () => {
     expect(duration).toBeLessThan(5000);
   });
 
+  it('should handle concurrent searches', async () => {
+    const searches = [
+      searchAustLii('negligence', { type: 'case' }),
+      searchAustLii('contract', { type: 'case' }),
+      searchAustLii('privacy', { type: 'legislation' }),
   it("should handle concurrent searches", async () => {
     const searches = [
       searchAustLii("negligence", { type: "case" }),
@@ -1480,6 +1668,8 @@ describe("Search Performance", () => {
 ```
 
 **Action Items:**
+
+- [ ] Add performance tests
 
 - [x] Add performance tests
 - [ ] Document expected performance characteristics
@@ -1558,6 +1748,17 @@ npx lint-staged
 
 Add to `package.json`:
 
+````json
+{
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+
 ```json
 {
   "lint-staged": {
@@ -1565,9 +1766,12 @@ Add to `package.json`:
     "*.{json,md,yml,yaml}": ["prettier --write"]
   }
 }
-```
+````
 
 **Action Items:**
+
+- [ ] Install Husky and lint-staged
+- [ ] Configure pre-commit hooks
 
 - [x] Install Husky and lint-staged
 - [x] Configure pre-commit hooks
@@ -1696,6 +1900,33 @@ Create `.vscode/settings.json`:
 **Documentation:** 37. ✅ Host documentation on GitHub Pages 38. ✅ Create video tutorials (optional) 39. ✅ Add more usage examples
 
 **Community:** 40. ✅ Set up discussions/forum 41. ✅ Create issue templates 42. ✅ Add PR templates
+**Code Quality:** 5. ✅ Add ESLint and Prettier 6. ✅ Configure linting in CI/CD 7. ✅ Fix all linting errors
+
+**Documentation:** 8. ✅ Create CONTRIBUTING.md 9. ✅ Create CHANGELOG.md 10. ✅ Add attribution section to README.md
+
+### Short Term (Week 2-3)
+
+**Testing:** 11. ✅ Add test coverage reporting 12. ✅ Split test file into multiple files 13. ✅ Add unit tests for utility functions 14. ✅ Create test fixtures
+
+**Code Organization:** 15. ✅ Create config.ts module 16. ✅ Create constants.ts module 17. ✅ Create custom error classes 18. ✅ Add logger utility
+
+**DevOps:** 19. ✅ Consolidate CI workflows 20. ✅ Add coverage reporting to CI 21. ✅ Configure branch protection
+
+### Medium Term (Month 1)
+
+**Documentation:** 22. ✅ Generate API documentation with TypeDoc 23. ✅ Enhance installation instructions 24. ✅ Add configuration examples 25. ✅ Create LICENSE-THIRD-PARTY.md
+
+**Code Quality:** 26. ✅ Add JSDoc comments to all exports 27. ✅ Add Husky pre-commit hooks 28. ✅ Create .editorconfig 29. ✅ Add VS Code workspace settings
+
+**Testing:** 30. ✅ Add performance tests 31. ✅ Achieve 80%+ code coverage 32. ✅ Add integration test fixtures
+
+### Long Term (Month 2+)
+
+**Features & Improvements:** 33. ✅ Implement rate limiting 34. ✅ Add caching layer 35. ✅ Add metrics/telemetry (optional) 36. ✅ Add Docker support
+
+**Documentation:** 37. ✅ Host documentation on GitHub Pages 38. ✅ Create video tutorials (optional) 39. ✅ Add more usage examples
+
+**Community:** 40. ✅ Set up discussions/forum 41. ✅ Create issue templates 42. ✅ Add PR templates
 
 ---
 
@@ -1720,6 +1951,9 @@ AusLaw MCP is a **well-architected project** with strong fundamentals:
 3. Add SECURITY.md for responsible disclosure
 4. Configure Dependabot for automated updates
 
+**SHOULD FIX (Soon):** 5. Add comprehensive test coverage 6. Split large files (tests, services) 7. Create missing documentation (CONTRIBUTING, CHANGELOG) 8. Consolidate CI workflows 9. Add proper error classes and logging
+
+**NICE TO HAVE (Future):** 10. API documentation generation 11. Performance testing 12. Docker support 13. Rate limiting 14. Caching layer
 **SHOULD FIX (Soon):** 5. Add comprehensive test coverage 6. Split large files (tests, services) 7. Create missing documentation (CONTRIBUTING, CHANGELOG) 8. Consolidate CI workflows 9. Add proper error classes and logging
 
 **NICE TO HAVE (Future):** 10. API documentation generation 11. Performance testing 12. Docker support 13. Rate limiting 14. Caching layer
@@ -1768,6 +2002,16 @@ Use this checklist to track progress on improvements:
 - [x] Configure Vitest coverage
 - [x] Split test file into multiple files
 - [x] Add unit tests
+- [ ] Create test fixtures
+- [ ] Add mocked tests
+- [ ] Add performance tests
+- [ ] Achieve 80%+ coverage
+
+### Documentation
+
+- [x] Configure Vitest coverage
+- [x] Split test file into multiple files
+- [x] Add unit tests
 - [x] Create test fixtures
 - [x] Add mocked tests
 - [x] Add performance tests
@@ -1782,6 +2026,16 @@ Use this checklist to track progress on improvements:
 - [x] Enhance installation instructions
 - [x] Add configuration examples
 - [x] Add .env.example
+- [ ] Configure TypeDoc
+- [ ] Generate API documentation
+
+### DevOps
+
+- [x] Consolidate CI workflows
+- [x] Add security audit job
+- [ ] Add coverage upload
+- [ ] Configure branch protection
+- [ ] Create release workflow
 - [x] Configure TypeDoc
 - [x] Generate API documentation
 
@@ -1796,6 +2050,11 @@ Use this checklist to track progress on improvements:
 - [x] Document deployment process
 
 ### Development Experience
+
+- [ ] Add git hooks (Husky)
+- [x] Create .editorconfig
+- [x] Create VS Code settings
+- [ ] Add pre-commit checks
 
 - [x] Add git hooks (Husky)
 - [x] Create .editorconfig

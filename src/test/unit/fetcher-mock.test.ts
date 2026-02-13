@@ -24,7 +24,9 @@ describe("fetchDocumentText (mocked)", () => {
       headers: { "content-type": "text/html" },
     });
 
-    const result = await fetchDocumentText("https://www.austlii.edu.au/au/cases/cth/HCA/2024/1.html");
+    const result = await fetchDocumentText(
+      "https://www.austlii.edu.au/au/cases/cth/HCA/2024/1.html",
+    );
     expect(result.text).toBeTruthy();
     expect(result.text).toContain("Smith v Jones");
   });
@@ -36,7 +38,9 @@ describe("fetchDocumentText (mocked)", () => {
       headers: { "content-type": "text/html" },
     });
 
-    const result = await fetchDocumentText("https://www.austlii.edu.au/au/cases/cth/HCA/2024/1.html");
+    const result = await fetchDocumentText(
+      "https://www.austlii.edu.au/au/cases/cth/HCA/2024/1.html",
+    );
     expect(result.text).toMatch(/\[1\]/);
     expect(result.text).toMatch(/\[4\]/);
   });
@@ -48,7 +52,9 @@ describe("fetchDocumentText (mocked)", () => {
       headers: { "content-type": "text/html" },
     });
 
-    const result = await fetchDocumentText("https://www.austlii.edu.au/au/cases/cth/HCA/2024/1.html");
+    const result = await fetchDocumentText(
+      "https://www.austlii.edu.au/au/cases/cth/HCA/2024/1.html",
+    );
     expect(result.contentType).toBe("text/html");
     expect(result.sourceUrl).toBe("https://www.austlii.edu.au/au/cases/cth/HCA/2024/1.html");
     expect(result.metadata).toBeDefined();
@@ -63,7 +69,9 @@ describe("fetchDocumentText (mocked)", () => {
       headers: { "content-type": "text/html" },
     });
 
-    const result = await fetchDocumentText("https://www.austlii.edu.au/au/cases/cth/HCA/2024/1.html");
+    const result = await fetchDocumentText(
+      "https://www.austlii.edu.au/au/cases/cth/HCA/2024/1.html",
+    );
     expect(result.ocrUsed).toBe(false);
   });
 
@@ -98,8 +106,6 @@ describe("fetchDocumentText (mocked)", () => {
       headers: { "content-type": "application/octet-stream" },
     });
 
-    await expect(
-      fetchDocumentText("https://example.com/file.bin"),
-    ).rejects.toThrow(ParseError);
+    await expect(fetchDocumentText("https://example.com/file.bin")).rejects.toThrow(ParseError);
   });
 });

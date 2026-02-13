@@ -65,8 +65,12 @@ interface SearchParams {
   offset?: number;
 }
 
-const RETRYABLE_AXIOS_ERROR_CODES = new Set(["ECONNRESET", "ETIMEDOUT", "ECONNABORTED", "EAI_AGAIN"]);
-
+const RETRYABLE_AXIOS_ERROR_CODES = new Set([
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "ECONNABORTED",
+  "EAI_AGAIN",
+]);
 /**
  * Extracts reported citation from text
  * Matches patterns like: (2024) 350 ALR 123, (2024) 98 ALJR 456, etc.
@@ -77,8 +81,8 @@ export function extractReportedCitation(text: string): string | undefined {
   // Examples: (2024) 350 ALR 123, (2024) 98 ALJR 456, (1992) 175 CLR 1
   // NZ examples: [2024] 1 NZLR 456, (2023) 3 NZLR 789
   const patterns = [
-    /\((\d{4})\)\s+(\d+)\s+([A-Z]{2,6})\s+(\d+)/,  // (2024) 350 ALR 123
-    /\[(\d{4})\]\s+(\d+)\s+([A-Z]{2,6})\s+(\d+)/,  // [2024] 1 NZLR 456
+    /\((\d{4})\)\s+(\d+)\s+([A-Z]{2,6})\s+(\d+)/, // (2024) 350 ALR 123
+    /\[(\d{4})\]\s+(\d+)\s+([A-Z]{2,6})\s+(\d+)/, // [2024] 1 NZLR 456
   ];
 
   for (const pattern of patterns) {
@@ -230,7 +234,15 @@ function parseSearchResults(html: string, options: SearchOptions): SearchResult[
       let cleanUrl = basePath;
       if (queryString) {
         const preservedParams = new URLSearchParams();
-        const searchDecorations = new Set(["stem", "synonyms", "num", "mask_path", "meta", "query", "method"]);
+        const searchDecorations = new Set([
+          "stem",
+          "synonyms",
+          "num",
+          "mask_path",
+          "meta",
+          "query",
+          "method",
+        ]);
         for (const [key, val] of new URLSearchParams(queryString)) {
           if (!searchDecorations.has(key)) {
             preservedParams.set(key, val);
@@ -330,7 +342,9 @@ export function shouldUseCaseNameFallback(
   method: SearchMethod,
   resultCount: number,
 ): boolean {
-  return method === "auto" && options.type === "case" && resultCount === 0 && isCaseNameQuery(query);
+  return (
+    method === "auto" && options.type === "case" && resultCount === 0 && isCaseNameQuery(query)
+  );
 }
 
 /**
