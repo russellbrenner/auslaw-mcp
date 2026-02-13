@@ -4,6 +4,7 @@ import {
   determineSortMode,
   boostTitleMatches,
   extractReportedCitation,
+  shouldUseCaseNameFallback,
 } from "../../services/austlii.js";
 import type { SearchResult, SearchOptions } from "../../services/austlii.js";
 
@@ -161,5 +162,31 @@ describe("boostTitleMatches", () => {
     // Should not throw even without "v" pattern
     const boosted = boostTitleMatches(results, "negligence duty of care");
     expect(boosted).toHaveLength(2);
+  });
+});
+
+describe("shouldUseCaseNameFallback", () => {
+  it("should fallback for case-name queries when auto method returns no results", () => {
+    expect(
+      shouldUseCaseNameFallback("Donoghue v Stevenson", { type: "case" }, "auto", 0),
+    ).toBe(true);
+  });
+
+  it("should not fallback when results are already present", () => {
+    expect(
+      shouldUseCaseNameFallback("Donoghue v Stevenson", { type: "case" }, "auto", 1),
+    ).toBe(false);
+  });
+
+  it("should not fallback for non-case-name queries or non-auto methods", () => {
+    expect(shouldUseCaseNameFallback("negligence duty of care", { type: "case" }, "auto", 0)).toBe(
+      false,
+    );
+    expect(shouldUseCaseNameFallback("Donoghue v Stevenson", { type: "case" }, "boolean", 0)).toBe(
+      false,
+    );
+    expect(
+      shouldUseCaseNameFallback("Donoghue v Stevenson", { type: "legislation" }, "auto", 0),
+    ).toBe(false);
   });
 });
