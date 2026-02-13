@@ -224,7 +224,10 @@ function parseSearchResults(html: string, options: SearchOptions): SearchResult[
     if (url && !url.startsWith("http")) {
       // Strip AustLII search-decoration params (stem, synonyms, etc.) but keep the base path
       const [basePath, queryString] = url.split("?");
-      let cleanUrl = basePath!;
+      if (!basePath) {
+        return;
+      }
+      let cleanUrl = basePath;
       if (queryString) {
         const preservedParams = new URLSearchParams();
         const searchDecorations = new Set(["stem", "synonyms", "num", "mask_path", "meta", "query", "method"]);
@@ -304,7 +307,8 @@ function isRetryableAustLiiError(error: unknown): boolean {
 }
 
 async function fetchSearchHtml(url: string): Promise<string> {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let attempt = 0;
+  while (true) {
     try {
       const response = await axios.get(url, {
         headers: AUSTLII_HEADERS,
@@ -315,10 +319,9 @@ async function fetchSearchHtml(url: string): Promise<string> {
       if (attempt === 1 || !isRetryableAustLiiError(error)) {
         throw error;
       }
+      attempt += 1;
     }
   }
-
-  return "";
 }
 
 export function shouldUseCaseNameFallback(
