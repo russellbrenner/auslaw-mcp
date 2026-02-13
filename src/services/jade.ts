@@ -49,8 +49,7 @@ const JADE_USER_AGENT = "auslaw-mcp/0.1.0 (legal research tool)";
 const JADE_TIMEOUT = 15000;
 
 /** jade.io's generic/fallback title when an article isn't publicly accessible */
-const JADE_GENERIC_TITLE =
-  "BarNet Jade - Find recent Australian legal decisions";
+const JADE_GENERIC_TITLE = "BarNet Jade - Find recent Australian legal decisions";
 
 /** Neutral citation pattern: [YYYY] COURT NUM */
 const NEUTRAL_CITATION_RE = /\[(\d{4})\]\s+([A-Z]+(?:\s+[A-Z]+)?)\s+(\d+)/;
@@ -212,9 +211,7 @@ export async function resolveArticle(articleId: number): Promise<JadeArticle> {
       maxContentLength: 50 * 1024,
     });
 
-    const html: string = typeof response.data === "string"
-      ? response.data
-      : String(response.data);
+    const html: string = typeof response.data === "string" ? response.data : String(response.data);
 
     // Extract <title> tag content
     const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
@@ -322,7 +319,6 @@ export function enrichWithJadeLinks(
   });
 }
 
-
 /**
  * Searches for Australian legal materials via jade.io.
  *
@@ -337,10 +333,7 @@ export function enrichWithJadeLinks(
  * @param options - Search options (jurisdiction, limit, etc.)
  * @returns Array of jade.io search results (may be empty if resolution fails)
  */
-export async function searchJade(
-  query: string,
-  options: SearchOptions,
-): Promise<SearchResult[]> {
+export async function searchJade(query: string, options: SearchOptions): Promise<SearchResult[]> {
   try {
     // Step 1: Search AustLII to get candidate results
     const austliiResults = await searchAustLii(query, options);
@@ -383,7 +376,9 @@ export async function searchJade(
     logger.debug(`searchJade: resolved ${jadeResults.length} jade.io articles`);
     return jadeResults;
   } catch (error) {
-    logger.warn(`searchJade: search failed: ${error instanceof Error ? error.message : String(error)}`);
+    logger.warn(
+      `searchJade: search failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     return [];
   }
 }
@@ -400,9 +395,7 @@ export async function searchJade(
  * @param citation - Neutral citation string, e.g. "[2008] NSWSC 323"
  * @returns Resolved article metadata, or undefined if not found
  */
-export async function searchJadeByCitation(
-  citation: string,
-): Promise<JadeArticle | undefined> {
+export async function searchJadeByCitation(citation: string): Promise<JadeArticle | undefined> {
   const searchUrl = buildSearchUrl(citation);
 
   try {
@@ -416,10 +409,7 @@ export async function searchJadeByCitation(
       maxRedirects: 5,
     });
 
-    const html: string =
-      typeof response.data === "string"
-        ? response.data
-        : String(response.data);
+    const html: string = typeof response.data === "string" ? response.data : String(response.data);
 
     // Extract <title> tag content
     const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
