@@ -55,34 +55,42 @@ interface SearchOptions {
 }
 ```
 
-### Phase 2: Multi-Source Integration (MEDIUM PRIORITY)
+### Phase 2: Multi-Source Integration (COMPLETED ✅)
 
 **Goal**: Search multiple authoritative sources and return best results
 
-**Sources to integrate**:
-1. **jade.io** - Superior reported judgments with page numbers
-2. **BarNet Jade** - Free access to some reported cases
-3. **AustLII** - Comprehensive unreported coverage (current)
+**Status**: ✅ Implemented without API access using AustLII cross-referencing
+
+**Sources integrated**:
+1. **AustLII** - Comprehensive unreported coverage (original source)
+2. **jade.io** - Superior reported judgments with better formatting (NEW)
 
 **Implementation approach**:
+- jade.io is a GWT SPA with no public search API
+- Search works by: AustLII search → filter results with neutral citations → resolve jade.io articles by probing article pages → extract metadata from HTML `<title>` tag
+- Maximum 5 concurrent jade.io article resolutions to avoid overwhelming the server
+- Graceful fallback: if jade.io resolution fails, AustLII results are still returned
+- jade.io results are preferred when deduplicating (better formatting)
+
+**Implemented functions**:
 ```typescript
-// Parallel search across sources
-const [austliiResults, jadeResults] = await Promise.all([
-  searchAustLii(query, options),
-  searchJade(query, options), // NEW
-]);
+// Search jade.io via AustLII cross-reference
+searchJade(query, options) → SearchResult[]
 
-// Merge and deduplicate by citation
-const merged = deduplicateResults([...austliiResults, ...jadeResults]);
+// Find jade.io article by neutral citation
+searchJadeByCitation(citation) → SearchResult
 
-// Rank by authority: Reported > Unreported, Higher court > Lower court
-const ranked = rankByAuthority(merged);
+// Deduplicate results by neutral citation (jade.io preferred)
+deduplicateResults(results) → SearchResult[]
+
+// Merge results from both sources
+mergeSearchResults(austlii, jade) → SearchResult[]
 ```
 
-**Challenges**:
-- jade.io may require authentication/API key
-- Need to handle different HTML structures per source
-- Deduplication logic must match same case across sources
+**New MCP tools**:
+- `search_jade` - Search jade.io for cases/legislation
+- `search_jade_by_citation` - Find jade.io article by neutral citation
+- `includeJade` parameter added to `search_cases` and `search_legislation`
 
 ### Phase 3: Enhanced Paragraph/Page Preservation (HIGH PRIORITY)
 
@@ -210,10 +218,31 @@ function calculateAuthorityScore(result: SearchResult): number {
 - `extractTextFromJadeHtml()` for jade.io-specific parsing
 - Updated test suite with 18 total scenarios
 
+### ✅ Phase 2B: jade.io Search Integration (COMPLETED)
+
+**Implemented features:**
+1. ✅ jade.io search via AustLII cross-referencing (no API access required)
+   - `searchJade()` searches by cross-referencing AustLII results with jade.io metadata
+   - `searchJadeByCitation()` finds jade.io articles by neutral citation
+   - Maximum 5 concurrent resolutions to avoid overwhelming jade.io
+2. ✅ Multi-source result merging and deduplication
+   - `deduplicateResults()` deduplicates by neutral citation, preferring jade.io
+   - `mergeSearchResults()` merges results from AustLII and jade.io
+3. ✅ New MCP tools
+   - `search_jade` tool for jade.io case/legislation search
+   - `search_jade_by_citation` tool for citation-based lookup
+   - `includeJade` parameter on `search_cases` and `search_legislation`
+4. ✅ Graceful fallback: if jade.io resolution fails, AustLII results still returned
+
+**Technical implementation:**
+- jade.io is a GWT SPA with no public search API
+- Approach: AustLII search → filter results with neutral citations → probe jade.io article pages → extract metadata from HTML `<title>` tag
+- Concurrency limited to 5 simultaneous jade.io resolutions
+- jade.io results preferred during deduplication (better formatting)
+
 ### Should Have (Following Sprint)
-1. 🔶 Contact jade.io for search API access (Phase 2B)
-2. 🔶 Implement page number extraction (Phase 3)
-3. 🔶 Add authority-based ranking (Phase 4)
+1. 🔶 Implement page number extraction (Phase 3)
+2. 🔶 Add authority-based ranking (Phase 4)
 
 ### Nice to Have (Future)
 1. 📋 BarNet Jade integration

@@ -28,6 +28,8 @@
 22. **Custom error usage** - Services use AustLiiError, NetworkError, ParseError, OcrError
 23. **Structured logging** - Services use logger instead of console.warn/error
 24. **Config/constants usage** - Services use config and constants instead of hardcoded values
+25. **jade.io search** - Search jade.io by cross-referencing AustLII results with jade.io metadata (no API required)
+26. **Multi-source merging** - Merge and deduplicate results from AustLII and jade.io
 
 ## 🟡 Remaining (Future Work)
 

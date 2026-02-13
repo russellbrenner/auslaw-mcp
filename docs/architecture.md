@@ -9,9 +9,10 @@ Deliver an MCP server that can:
 ## Key Components
 
 ### MCP Server (`src/index.ts`)
-- Registers `search_legislation`, `search_cases`, and `fetch_document_text` tools.
+- Registers `search_legislation`, `search_cases`, `search_jade`, `search_jade_by_citation`, `fetch_document_text`, `resolve_jade_article`, and `jade_citation_lookup` tools.
 - Normalises tool arguments and orchestrates downstream services.
 - Formats responses for LLM consumption (structured JSON with citation metadata).
+- Supports `includeJade` parameter on `search_cases` and `search_legislation` for multi-source merging.
 
 ### AustLII Service (`src/services/austlii.ts`)
 - Executes HTTP searches against AustLII (`sinosrch.cgi`) with scoped filters.
@@ -23,6 +24,20 @@ Deliver an MCP server that can:
   - Snippets for relevance
 - Returns consistent `SearchResult` objects for cases and legislation.
 - TODO: Add pagination handling and graceful degradation on rate limits.
+
+### jade.io Service (`src/services/jade.ts`)
+- Searches jade.io by cross-referencing AustLII results with jade.io article metadata.
+- **Strategy**: jade.io is a GWT SPA with no public search API. Instead:
+  1. Perform an AustLII search to get results with neutral citations
+  2. For each result with a neutral citation, probe jade.io to resolve article info
+  3. Extract metadata from the jade.io article page `<title>` tag
+- Maximum 5 concurrent jade.io article resolutions to avoid overwhelming the server.
+- Graceful fallback: if jade.io resolution fails, AustLII results are still returned.
+- **Key functions**:
+  - `searchJade(query, options)` – Full jade.io search via AustLII cross-reference
+  - `searchJadeByCitation(citation)` – Find jade.io article by neutral citation
+  - `deduplicateResults(results)` – Deduplicate by neutral citation, preferring jade.io
+  - `mergeSearchResults(austlii, jade)` – Merge results from both sources
 
 ### Document Fetcher (`src/services/fetcher.ts`)
 - Retrieves HTML or PDF content from provided URLs.

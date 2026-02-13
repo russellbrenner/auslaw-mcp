@@ -21,6 +21,9 @@ Model Context Protocol (MCP) server for Australian and New Zealand legal researc
 - ✅ **Legislation search**: Find Australian and NZ legislation
 - ✅ **Primary sources only**: Filters out journal articles and commentary
 - ✅ **Citation extraction**: Extracts neutral citations `[2025] HCA 26` and reported citations `(2024) 350 ALR 123`
+- ✅ **jade.io search**: Search jade.io for cases by cross-referencing AustLII results with jade.io metadata
+- ✅ **jade.io citation search**: Find jade.io articles by neutral citation
+- ✅ **Multi-source merging**: Merge and deduplicate results from AustLII and jade.io (jade.io preferred)
 - ✅ **jade.io URL support**: Fetch document text from jade.io URLs (requires user access)
 - ✅ **jade.io article resolution**: Resolve jade.io article metadata by ID
 - ✅ **jade.io citation lookup**: Generate jade.io lookup URLs from neutral citations
@@ -30,8 +33,8 @@ Model Context Protocol (MCP) server for Australian and New Zealand legal researc
 - ✅ **OCR support**: Tesseract OCR fallback for scanned PDFs
 
 ### Roadmap
-- 🔶 **jade.io integration**: Partial support - users can provide jade.io URLs for document fetching
-- 🔜 **jade.io search**: Pending API access from jade.io for search integration
+- ✅ **jade.io search**: Search jade.io by cross-referencing AustLII results with jade.io article metadata (no API required)
+- ✅ **Multi-source integration**: Merge and deduplicate results from AustLII and jade.io
 - 🔜 **Page numbers**: Will extract page numbers from reported versions
 - 🔜 **Authority ranking**: Will prioritise reported over unreported judgements
 
@@ -221,6 +224,14 @@ Once the MCP is connected, you can ask an AI assistant like Claude natural langu
 
 > "Find all High Court cases about constitutional implied freedoms in the last 10 years and identify the key principles"
 
+### jade.io Search
+
+> "Search jade.io for cases about negligence duty of care"
+
+> "Find the jade.io article for [2008] NSWSC 323"
+
+> "Search for Mabo v Queensland and include jade.io results"
+
 ### Document Retrieval
 
 > "Fetch the full text of [2024] HCA 1 and summarise the key holdings"
@@ -241,6 +252,7 @@ Search Australian and New Zealand case law.
 | `sortBy` | No | `auto` (default), `relevance`, or `date` |
 | `method` | No | `auto`, `title`, `phrase`, `all`, `any`, `near`, `boolean` |
 | `offset` | No | Skip first N results for pagination (e.g., 50 for page 2) |
+| `includeJade` | No | Include jade.io results (merged and deduplicated) |
 | `format` | No | `json` (default), `text`, `markdown`, `html` |
 
 **Search Methods:**
@@ -306,6 +318,7 @@ Search Australian and New Zealand legislation.
 | `sortBy` | No | `auto` (default), `relevance`, or `date` |
 | `method` | No | `auto`, `title`, `phrase`, `all`, `any`, `near`, `legis`, `boolean` |
 | `offset` | No | Skip first N results for pagination |
+| `includeJade` | No | Include jade.io results (merged and deduplicated) |
 | `format` | No | `json` (default), `text`, `markdown`, `html` |
 
 **Example:**
@@ -315,6 +328,42 @@ Search Australian and New Zealand legislation.
   "jurisdiction": "cth",
   "method": "legis",
   "limit": 10
+}
+```
+
+### search_jade
+Search jade.io for Australian case law by cross-referencing AustLII results with jade.io article metadata. Works without jade.io API access.
+
+**Parameters:**
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `query` | Yes | Search query (e.g., "negligence duty of care") |
+| `jurisdiction` | No | Filter: `cth`, `vic`, `nsw`, `qld`, `sa`, `wa`, `tas`, `nt`, `act`, `federal`, `nz`, `other` |
+| `limit` | No | Max results 1-50 (default 10) |
+| `sortBy` | No | `auto` (default), `relevance`, or `date` |
+| `type` | No | `case` or `legislation` |
+
+**Example:**
+```json
+{
+  "query": "Mabo v Queensland",
+  "jurisdiction": "cth",
+  "limit": 5
+}
+```
+
+### search_jade_by_citation
+Find a jade.io article by neutral citation. Resolves the citation to jade.io article metadata.
+
+**Parameters:**
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `citation` | Yes | Neutral citation (e.g., `[2008] NSWSC 323`) |
+
+**Example:**
+```json
+{
+  "citation": "[2008] NSWSC 323"
 }
 ```
 
@@ -480,7 +529,9 @@ This project retrieves legal data from publicly accessible databases.
 - AustLII provides free access to Australian and New Zealand legal materials
 
 ### jade.io
-- Users must have their own jade.io subscription
+- Search integration works by cross-referencing AustLII results with jade.io article metadata
+- Maximum 5 concurrent jade.io article resolutions to avoid overwhelming the server
+- Users must have their own jade.io subscription for full document access
 - This tool does not bypass jade.io's access controls
 - Respects jade.io's terms of service
 
