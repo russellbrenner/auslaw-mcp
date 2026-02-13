@@ -449,7 +449,7 @@ src/
 ├── services
 │   ├── austlii.ts # AustLII search integration
 │   ├── fetcher.ts # Document text retrieval (HTML/PDF/OCR)
-│   └── jade.ts # jade.io article resolution & citation lookup
+│   └── jade.ts # jade.io search, article resolution & cross-referencing
 ├── test
 │   ├── unit
 │   │   ├── constants.test.ts
