@@ -2,6 +2,7 @@ import axios from "axios";
 import type { SearchResult, SearchOptions } from "./austlii.js";
 import { searchAustLii } from "./austlii.js";
 import { logger } from "../utils/logger.js";
+import { MAX_JADE_RESOLUTIONS } from "../constants.js";
 
 /**
  * jade.io integration service
@@ -321,8 +322,6 @@ export function enrichWithJadeLinks(
   });
 }
 
-/** Maximum number of jade.io articles to resolve concurrently */
-const MAX_JADE_RESOLUTIONS = 5;
 
 /**
  * Searches for Australian legal materials via jade.io.
@@ -364,7 +363,8 @@ export async function searchJade(
 
     const settlements = await Promise.allSettled(
       toResolve.map(async (result) => {
-        const article = await searchJadeByCitation(result.neutralCitation!);
+        if (!result.neutralCitation) return undefined;
+        const article = await searchJadeByCitation(result.neutralCitation);
         if (article) {
           return articleToSearchResult(article, result.type);
         }
