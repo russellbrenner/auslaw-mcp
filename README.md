@@ -11,6 +11,7 @@ Model Context Protocol (MCP) server for Australian and New Zealand legal researc
 ## Features
 
 ### Current Capabilities
+
 - ✅ **Case law search**: Natural language queries across all Australian and NZ jurisdictions
 - ✅ **All jurisdictions**: Commonwealth, all States/Territories (VIC, NSW, QLD, SA, WA, TAS, NT, ACT), and New Zealand
 - ✅ **Intelligent search relevance**: Auto-detects case name queries vs topic searches
@@ -30,6 +31,7 @@ Model Context Protocol (MCP) server for Australian and New Zealand legal researc
 - ✅ **OCR support**: Tesseract OCR fallback for scanned PDFs
 
 ### Roadmap
+
 - 🔶 **jade.io integration**: Partial support - users can provide jade.io URLs for document fetching
 - 🔜 **jade.io search**: Pending API access from jade.io for search integration
 - 🔜 **Page numbers**: Will extract page numbers from reported versions
@@ -49,6 +51,7 @@ npm run build
 ```
 
 For local development with hot reload:
+
 ```bash
 npm run dev
 ```
@@ -61,11 +64,11 @@ npm run dev
 
 Edit your Claude Desktop configuration file:
 
-| OS | Path |
-|----|------|
-| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
-| Linux | `~/.config/Claude/claude_desktop_config.json` |
+| OS      | Path                                                              |
+| ------- | ----------------------------------------------------------------- |
+| macOS   | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Windows | `%APPDATA%\Claude\claude_desktop_config.json`                     |
+| Linux   | `~/.config/Claude/claude_desktop_config.json`                     |
 
 Add the following (replace `/path/to/auslaw-mcp` with your actual install path):
 
@@ -230,6 +233,7 @@ Once the MCP is connected, you can ask an AI assistant like Claude natural langu
 ## Available Tools
 
 ### search_cases
+
 Search Australian and New Zealand case law.
 
 **Parameters:**
@@ -257,6 +261,7 @@ Search Australian and New Zealand case law.
 **Examples:**
 
 Find a specific case:
+
 ```json
 {
   "query": "Donoghue v Stevenson",
@@ -266,6 +271,7 @@ Find a specific case:
 ```
 
 Recent NSW cases on a topic:
+
 ```json
 {
   "query": "adverse possession",
@@ -276,6 +282,7 @@ Recent NSW cases on a topic:
 ```
 
 Exact phrase search:
+
 ```json
 {
   "query": "duty of care",
@@ -286,6 +293,7 @@ Exact phrase search:
 ```
 
 Pagination (get results 51-100):
+
 ```json
 {
   "query": "contract breach",
@@ -295,6 +303,7 @@ Pagination (get results 51-100):
 ```
 
 ### search_legislation
+
 Search Australian and New Zealand legislation.
 
 **Parameters:**
@@ -309,6 +318,7 @@ Search Australian and New Zealand legislation.
 | `format` | No | `json` (default), `text`, `markdown`, `html` |
 
 **Example:**
+
 ```json
 {
   "query": "Privacy Act",
@@ -319,6 +329,7 @@ Search Australian and New Zealand legislation.
 ```
 
 ### fetch_document_text
+
 Fetch full text from a case or legislation URL. Supports HTML and PDF with OCR fallback.
 
 **Parameters:**
@@ -328,6 +339,7 @@ Fetch full text from a case or legislation URL. Supports HTML and PDF with OCR f
 | `format` | No | `json` (default), `text`, `markdown`, `html` |
 
 **Example:**
+
 ```json
 {
   "url": "https://www.austlii.edu.au/cgi-bin/viewdoc/au/cases/cth/HCA/1992/23.html"
@@ -335,6 +347,7 @@ Fetch full text from a case or legislation URL. Supports HTML and PDF with OCR f
 ```
 
 ### resolve_jade_article
+
 Resolve metadata for a jade.io article by its numeric ID. Returns case name, neutral citation, jurisdiction, and year.
 
 **Parameters:**
@@ -343,6 +356,7 @@ Resolve metadata for a jade.io article by its numeric ID. Returns case name, neu
 | `articleId` | Yes | jade.io article numeric ID (positive integer) |
 
 **Example:**
+
 ```json
 {
   "articleId": 68901
@@ -350,6 +364,7 @@ Resolve metadata for a jade.io article by its numeric ID. Returns case name, neu
 ```
 
 ### jade_citation_lookup
+
 Generate a jade.io lookup URL for a given neutral citation. Returns a URL that opens jade.io with the citation search.
 
 **Parameters:**
@@ -358,6 +373,7 @@ Generate a jade.io lookup URL for a given neutral citation. Returns a URL that o
 | `citation` | Yes | Neutral citation string (e.g., `[2008] NSWSC 323`) |
 
 **Example:**
+
 ```json
 {
   "citation": "[2008] NSWSC 323"
@@ -366,27 +382,29 @@ Generate a jade.io lookup URL for a given neutral citation. Returns a URL that o
 
 ## Jurisdictions
 
-| Code | Jurisdiction |
-|------|-------------|
-| `cth` | Commonwealth of Australia |
+| Code      | Jurisdiction                   |
+| --------- | ------------------------------ |
+| `cth`     | Commonwealth of Australia      |
 | `federal` | Federal courts (alias for cth) |
-| `vic` | Victoria |
-| `nsw` | New South Wales |
-| `qld` | Queensland |
-| `sa` | South Australia |
-| `wa` | Western Australia |
-| `tas` | Tasmania |
-| `nt` | Northern Territory |
-| `act` | Australian Capital Territory |
-| `nz` | New Zealand |
-| `other` | All jurisdictions (no filter) |
+| `vic`     | Victoria                       |
+| `nsw`     | New South Wales                |
+| `qld`     | Queensland                     |
+| `sa`      | South Australia                |
+| `wa`      | Western Australia              |
+| `tas`     | Tasmania                       |
+| `nt`      | Northern Territory             |
+| `act`     | Australian Capital Territory   |
+| `nz`      | New Zealand                    |
+| `other`   | All jurisdictions (no filter)  |
 
 ## Running Tests
+
 ```bash
 npm test
 ```
 
 Test scenarios include:
+
 1. **Negligence and duty of care** - Personal injury law searches
 2. **Contract disputes** - Commercial law and breach of contract
 3. **Constitutional law** - High Court constitutional matters
@@ -402,9 +420,20 @@ src/
 │   ├── fetcher.ts # Document text retrieval (HTML/PDF/OCR)
 │   └── jade.ts # jade.io article resolution & citation lookup
 ├── test
+│   ├── fixtures
+│   │   ├── austlii-judgment.html
+│   │   ├── austlii-search-response.html
+│   │   ├── index.ts
+│   │   └── jade-article-response.html
+│   ├── performance
+│   │   └── search-performance.test.ts
 │   ├── unit
+│   │   ├── austlii.test.ts
+│   │   ├── austlii-mock.test.ts
+│   │   ├── config.test.ts
 │   │   ├── constants.test.ts
 │   │   ├── errors.test.ts
+│   │   ├── fetcher-mock.test.ts
 │   │   ├── formatter.test.ts
 │   │   └── logger.test.ts
 │   ├── jade.test.ts
@@ -435,6 +464,7 @@ k8s/
 ### Docker
 
 Quick start:
+
 ```bash
 ./build.sh              # Build Docker image
 docker-compose up       # Run locally
@@ -445,6 +475,7 @@ See [docs/DOCKER.md](docs/DOCKER.md) for detailed Docker deployment instructions
 ### Kubernetes (k3s)
 
 Quick start:
+
 ```bash
 ./build.sh              # Build and export image
 # Import to k3s nodes (see k8s/README.md)
@@ -475,11 +506,13 @@ See [config.yaml](config.yaml) for defaults and `.env.example` for a template.
 This project retrieves legal data from publicly accessible databases.
 
 ### AustLII (Australasian Legal Information Institute)
+
 - Website: https://www.austlii.edu.au
 - Terms of Use: https://www.austlii.edu.au/austlii/terms.html
 - AustLII provides free access to Australian and New Zealand legal materials
 
 ### jade.io
+
 - Users must have their own jade.io subscription
 - This tool does not bypass jade.io's access controls
 - Respects jade.io's terms of service
@@ -487,6 +520,7 @@ This project retrieves legal data from publicly accessible databases.
 ### Fair Use
 
 Please use this tool responsibly:
+
 - Implement reasonable delays between requests
 - Cache results when appropriate
 - Don't overload public legal databases
@@ -497,6 +531,7 @@ Please use this tool responsibly:
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full contribution guidelines and [AGENTS.md](AGENTS.md) for AI agent instructions.
 
 **Key principles**:
+
 - Primary sources only (no journal articles)
 - Citation accuracy is paramount
 - All tests must pass before committing

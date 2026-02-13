@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - ESLint and Prettier for code quality enforcement
 - SECURITY.md for responsible vulnerability disclosure
 - CONTRIBUTING.md with development guidelines
@@ -17,8 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Test coverage support configuration
 - Unit tests for AustLII search internals (isCaseNameQuery, determineSortMode, boostTitleMatches, extractReportedCitation)
 - Unit tests for configuration module
+- Test fixtures for offline testing (AustLII search HTML, judgment HTML, jade.io article HTML)
+- Mocked unit tests for searchAustLii with network isolation (9 tests)
+- Mocked unit tests for fetchDocumentText with network isolation (7 tests)
+- Performance tests for search latency and concurrent requests
+- Release workflow for automated GitHub releases on version tags
+- Coverage upload to Codecov in CI pipeline
+- Husky and lint-staged for pre-commit code quality hooks
+- TypeDoc configuration for API documentation generation
 
 ### Changed
+
 - Updated dependencies to address security vulnerabilities
 - Enhanced documentation structure
 - Migrated ESLint configuration from `.eslintrc.json` to `eslint.config.mjs` for ESLint v9 compatibility
@@ -28,12 +38,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exported internal AustLII functions for testability
 
 ### Security
+
 - Fixed 3 HIGH severity vulnerabilities in dependencies
 - Added npm audit to development workflow
 
 ## [0.1.0] - 2024-12-XX
 
 ### Added
+
 - Initial MVP release
 - AustLII search integration for Australian and NZ legal research
 - Intelligent search relevance with auto-detection
@@ -57,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MIT License
 
 ### Features
+
 - **Search Tools**:
   - `search_cases` - Search Australian and NZ case law
   - `search_legislation` - Search legislation
@@ -79,6 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Paragraph numbers: `[N]` format preservation
 
 ### Technical
+
 - Node.js 18+ required
 - TypeScript 5.9+ with strict mode
 - Model Context Protocol (MCP) SDK 1.19+
@@ -88,12 +102,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tesseract OCR for scanned PDFs
 
 ### Documentation
+
 - Comprehensive README with usage examples
 - AGENTS.md for AI-assisted development
 - ROADMAP.md for planned features
 - Architecture documentation
 
 ### Testing
+
 - 18 integration test scenarios
 - Real-world API testing against AustLII
 - Coverage of main use cases:
