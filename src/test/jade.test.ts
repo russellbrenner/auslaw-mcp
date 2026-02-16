@@ -12,7 +12,6 @@ import {
   buildCitationLookupUrl,
   enrichWithJadeLinks,
   searchJade,
-  searchJadeByCitation,
   deduplicateResults,
   mergeSearchResults,
 } from "../services/jade.js";
@@ -110,9 +109,7 @@ describe("jade.io title parsing", () => {
     });
 
     it("should parse High Court case title", () => {
-      const result = parseTitleMetadata(
-        "Mabo v Queensland (No 2) [1992] HCA 23 - BarNet Jade",
-      );
+      const result = parseTitleMetadata("Mabo v Queensland (No 2) [1992] HCA 23 - BarNet Jade");
       expect(result.title).toBe("Mabo v Queensland (No 2) [1992] HCA 23");
       expect(result.neutralCitation).toBe("[1992] HCA 23");
       expect(result.year).toBe("1992");
@@ -120,25 +117,19 @@ describe("jade.io title parsing", () => {
     });
 
     it("should parse Federal Court case title", () => {
-      const result = parseTitleMetadata(
-        "Smith v Jones [2024] FCA 456 - BarNet Jade",
-      );
+      const result = parseTitleMetadata("Smith v Jones [2024] FCA 456 - BarNet Jade");
       expect(result.title).toBe("Smith v Jones [2024] FCA 456");
       expect(result.neutralCitation).toBe("[2024] FCA 456");
       expect(result.jurisdiction).toBe("cth");
     });
 
     it("should parse Victorian case title", () => {
-      const result = parseTitleMetadata(
-        "Example Case [2023] VSC 100 - BarNet Jade",
-      );
+      const result = parseTitleMetadata("Example Case [2023] VSC 100 - BarNet Jade");
       expect(result.jurisdiction).toBe("vic");
     });
 
     it("should parse Queensland case title", () => {
-      const result = parseTitleMetadata(
-        "Test v State [2023] QSC 50 - BarNet Jade",
-      );
+      const result = parseTitleMetadata("Test v State [2023] QSC 50 - BarNet Jade");
       expect(result.jurisdiction).toBe("qld");
     });
 
@@ -152,9 +143,7 @@ describe("jade.io title parsing", () => {
     });
 
     it("should handle legislation title without citation", () => {
-      const result = parseTitleMetadata(
-        "Long Service Leave Act 1992 (Vic) - BarNet Jade",
-      );
+      const result = parseTitleMetadata("Long Service Leave Act 1992 (Vic) - BarNet Jade");
       expect(result.title).toBe("Long Service Leave Act 1992 (Vic)");
       expect(result.neutralCitation).toBeUndefined();
       expect(result.jurisdiction).toBeUndefined();
@@ -167,9 +156,7 @@ describe("jade.io title parsing", () => {
     });
 
     it("should parse Full Federal Court citations", () => {
-      const result = parseTitleMetadata(
-        "Appeal Case [2023] FCAFC 99 - BarNet Jade",
-      );
+      const result = parseTitleMetadata("Appeal Case [2023] FCAFC 99 - BarNet Jade");
       expect(result.neutralCitation).toBe("[2023] FCAFC 99");
       expect(result.jurisdiction).toBe("cth");
     });
