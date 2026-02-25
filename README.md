@@ -471,11 +471,22 @@ src/
 ├── services
 │   ├── austlii.ts # AustLII search integration
 │   ├── fetcher.ts # Document text retrieval (HTML/PDF/OCR)
-│   └── jade.ts # jade.io search, article resolution & cross-referencing
+│   └── jade.ts # jade.io article resolution & citation lookup
 ├── test
+│   ├── fixtures
+│   │   ├── austlii-judgment.html
+│   │   ├── austlii-search-response.html
+│   │   ├── index.ts
+│   │   └── jade-article-response.html
+│   ├── performance
+│   │   └── search-performance.test.ts
 │   ├── unit
+│   │   ├── austlii-mock.test.ts
+│   │   ├── austlii.test.ts
+│   │   ├── config.test.ts
 │   │   ├── constants.test.ts
 │   │   ├── errors.test.ts
+│   │   ├── fetcher-mock.test.ts
 │   │   ├── formatter.test.ts
 │   │   └── logger.test.ts
 │   ├── jade.test.ts
