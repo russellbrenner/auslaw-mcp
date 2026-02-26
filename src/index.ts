@@ -29,8 +29,12 @@ const jurisdictionEnum = z.enum([
   "other",
 ]);
 const sortByEnum = z.enum(["relevance", "date", "auto"]).default("auto");
-const caseMethodEnum = z.enum(["auto", "title", "phrase", "all", "any", "near", "boolean"]).default("auto");
-const legislationMethodEnum = z.enum(["auto", "title", "phrase", "all", "any", "near", "legis", "boolean"]).default("auto");
+const caseMethodEnum = z
+  .enum(["auto", "title", "phrase", "all", "any", "near", "boolean"])
+  .default("auto");
+const legislationMethodEnum = z
+  .enum(["auto", "title", "phrase", "all", "any", "near", "legis", "boolean"])
+  .default("auto");
 
 async function main() {
   const server = new McpServer({
@@ -193,11 +197,7 @@ async function main() {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(
-              { citation, jadeUrl: lookupUrl },
-              null,
-              2,
-            ),
+            text: JSON.stringify({ citation, jadeUrl: lookupUrl }, null, 2),
           },
         ],
       };
@@ -223,8 +223,7 @@ async function main() {
       inputSchema: searchJadeShape,
     },
     async (rawInput) => {
-      const { query, jurisdiction, limit, format, sortBy, type } =
-        searchJadeParser.parse(rawInput);
+      const { query, jurisdiction, limit, format, sortBy, type } = searchJadeParser.parse(rawInput);
       const results = await searchJade(query, {
         type,
         jurisdiction,
