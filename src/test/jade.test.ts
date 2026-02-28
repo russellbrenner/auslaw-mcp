@@ -17,6 +17,8 @@ import {
 } from "../services/jade.js";
 import type { SearchResult } from "../services/austlii.js";
 
+const describeLive = process.env.CI ? describe.skip : describe;
+
 // ── Unit tests (no network) ───────────────────────────────────────────
 
 describe("jade.io URL utilities", () => {
@@ -270,7 +272,7 @@ describe("jade.io cross-referencing", () => {
   });
 });
 
-describe("jade.io search (via AustLII cross-reference)", () => {
+describeLive("jade.io search (via AustLII cross-reference)", () => {
   it("should return results from jade.io for case search", async () => {
     const results = await searchJade("negligence", {
       type: "case",
@@ -439,7 +441,7 @@ describe("mergeSearchResults", () => {
 
 // ── Integration tests (hit live jade.io) ──────────────────────────────
 
-describe("jade.io article resolution (live)", () => {
+describeLive("jade.io article resolution (live)", () => {
   /**
    * Test resolving a known accessible article.
    * Article 68901 = Re Macquarie Private Capital A Ltd [2008] NSWSC 323
