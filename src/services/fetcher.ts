@@ -7,6 +7,13 @@ import * as tmp from "tmp";
 import * as fs from "fs/promises";
 import { config } from "../config.js";
 import { MAX_CONTENT_LENGTH } from "../constants.js";
+import { isJadeUrl } from "./jade.js";
+
+export interface ParagraphBlock {
+  number: number;
+  text: string;
+  pageNumber?: number;
+}
 
 export interface FetchResponse {
   text: string;
@@ -14,6 +21,7 @@ export interface FetchResponse {
   sourceUrl: string;
   ocrUsed: boolean;
   metadata?: Record<string, string>;
+  paragraphs?: ParagraphBlock[];
 }
 
 async function extractTextFromPdf(
@@ -140,6 +148,24 @@ function extractTextFromHtml(html: string, url?: string): string {
   return bodyText.replace(/\s+/g, " ").trim();
 }
 
+function extractParagraphBlocks(html: string): ParagraphBlock[] {
+  const $ = cheerio.load(html);
+  const paragraphs: ParagraphBlock[] = [];
+
+  $("p, div").each((_, el) => {
+    const text = $(el).text().trim();
+    const match = text.match(/^\[(\d+)\]\s*([\s\S]+)/);
+    if (match && match[1] && match[2]) {
+      paragraphs.push({
+        number: parseInt(match[1], 10),
+        text: match[2].trim(),
+      });
+    }
+  });
+
+  return paragraphs;
+}
+
 /**
  * Fetches a legal document from a URL and extracts its text content.
  *
@@ -152,11 +178,21 @@ function extractTextFromHtml(html: string, url?: string): string {
  */
 export async function fetchDocumentText(url: string): Promise<FetchResponse> {
   try {
+    const headers: Record<string, string> = {
+      "User-Agent": config.jade.userAgent,
+    };
+
+    if (isJadeUrl(url) && config.jade.sessionCookie) {
+      const cookie = config.jade.sessionCookie;
+      if (!/^[\x20-\x7E]+$/.test(cookie) || /[\r\n]/.test(cookie)) {
+        throw new Error("JADE_SESSION_COOKIE contains invalid characters");
+      }
+      headers["Cookie"] = cookie;
+    }
+
     const response = await axios.get(url, {
       responseType: "arraybuffer",
-      headers: {
-        "User-Agent": config.jade.userAgent,
-      },
+      headers,
       timeout: config.jade.timeout,
       maxContentLength: MAX_CONTENT_LENGTH,
     });
@@ -169,6 +205,7 @@ export async function fetchDocumentText(url: string): Promise<FetchResponse> {
 
     let text: string;
     let ocrUsed = false;
+    let paragraphs: ParagraphBlock[] | undefined;
 
     // Handle PDF documents
     if (contentType.includes("application/pdf") || detectedType?.mime === "application/pdf") {
@@ -180,6 +217,7 @@ export async function fetchDocumentText(url: string): Promise<FetchResponse> {
     else if (contentType.includes("text/html") || detectedType?.mime === "text/html") {
       const html = buffer.toString("utf-8");
       text = extractTextFromHtml(html, url);
+      paragraphs = extractParagraphBlocks(html);
     }
     // Handle plain text
     else if (contentType.includes("text/plain")) {
@@ -204,9 +242,18 @@ export async function fetchDocumentText(url: string): Promise<FetchResponse> {
       sourceUrl: url,
       ocrUsed,
       metadata,
+      paragraphs,
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
+      if (
+        isJadeUrl(url) &&
+        (error.response?.status === 401 || error.response?.status === 403)
+      ) {
+        throw new Error(
+          `jade.io returned ${error.response.status}. Set JADE_SESSION_COOKIE env var with your authenticated session cookie.`,
+        );
+      }
       throw new Error(`Failed to fetch document from ${url}: ${error.message}`);
     }
     throw error;

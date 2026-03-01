@@ -14,6 +14,7 @@ export interface Config {
     baseUrl: string;
     userAgent: string;
     timeout: number;
+    sessionCookie?: string;
   };
   ocr: {
     language: string;
@@ -48,6 +49,7 @@ export function loadConfig(): Config {
       baseUrl: process.env.JADE_BASE_URL || "https://jade.io",
       userAgent: process.env.JADE_USER_AGENT || "auslaw-mcp/0.1.0 (legal research tool)",
       timeout: parseInt(process.env.JADE_TIMEOUT || "15000", 10),
+      sessionCookie: process.env.JADE_SESSION_COOKIE || undefined,
     },
     ocr: {
       language: process.env.OCR_LANGUAGE || "eng",
