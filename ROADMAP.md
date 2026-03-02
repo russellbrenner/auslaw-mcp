@@ -44,19 +44,43 @@ backend XHR API can be called directly with session credentials.
 **Goal:** Identify the XHR endpoints the GWT app uses to load judgment text.
 
 Tasks:
-- [ ] Open Chrome DevTools Network tab on an authenticated jade.io session
-- [ ] Navigate to a known judgment (e.g. `jade.io/article/67401`)
-- [ ] Filter for XHR/Fetch requests and capture all calls after initial page load
-- [ ] Identify endpoints that return judgment content (likely JSON or XML)
-- [ ] Document: URL patterns, request headers, authentication mechanism, response schema
-- [ ] Check whether `alcsessionid` / `IID` cookies alone are sufficient or if additional
-      tokens (CSRF, GWT permutation token) are required
+- [x] Open Chrome DevTools Network tab on an authenticated jade.io session
+- [x] Navigate to a known judgment (`jade.io/article/67401`)
+- [x] Filter for XHR/Fetch requests and capture all calls after initial page load
+- [x] Identify endpoints that return judgment content
+- [x] Document URL patterns, authentication mechanism, and response schema
+- [ ] Inspect `jadeService.do` POST body and response for article content call (needs Proxyman)
 
-Key things to look for:
-- Does jade.io use a REST API or GWT-RPC (binary protocol)?
-- Are response payloads JSON, XML, or GWT serialisation format?
-- Is there pagination or streaming for long judgments?
-- Are there rate limits or bot-detection headers?
+**Findings (2026-03-02):**
+
+All jade.io API traffic uses **GWT-RPC** wire format (`//OK[integer-array, ..., string-table]`).
+There is no REST or JSON API surface accessible without GWT-RPC deserialization.
+
+Endpoints observed loading `jade.io/article/67401`:
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `jadeService.do` | POST ×6 | Main GWT-RPC service (likely includes article content load) |
+| `tranche2.do?ds:JadeModelAllUsersInitial,0,0,{userId},,,0` | GET | User session state (DomainModel init) |
+| `tranche2.do?ds:JadeModelJournals,0,0,{userId},,,0` | GET | Journal metadata for UI |
+
+The integer `127351` in `tranche2.do` URLs is the authenticated **user ID**, not the article ID.
+
+Additional findings:
+- **Cookies rotate on every response** — `IID` and `alcsessionid` are refreshed via `Set-Cookie`
+  on each reply. Any direct API client must maintain a cookie jar and track rotations.
+- Auth cookies are `HttpOnly` — not readable via `document.cookie`, but sent automatically by
+  the browser with each request.
+- Cookie extraction from Chrome: `browser_cookie3` can read HttpOnly cookies from the Chrome
+  profile on disk (macOS Keychain decryption included).
+
+Next: use Proxyman to capture the `jadeService.do` POST body and response for the article content
+call to determine the GWT-RPC method name and argument structure.
+
+Key things still to determine:
+- Which of the 6 `jadeService.do` calls loads article text, and what is the GWT-RPC method name?
+- Is the judgment text in the GWT-RPC response, or is it fetched as a separate static resource?
+- Is there pagination or chunking for long judgments?
 
 ### Phase 2 — Feasibility Assessment
 
