@@ -240,7 +240,23 @@ export async function fetchDocumentText(url: string): Promise<FetchResponse> {
     }
 
     await jadeRateLimiter.throttle();
-    const html = await fetchJadeArticleContent(articleId, config.jade.sessionCookie);
+    let html: string;
+    try {
+      html = await fetchJadeArticleContent(articleId, config.jade.sessionCookie);
+    } catch (error) {
+      // Convert AxiosError to a plain Error so config.headers (which contains the
+      // Cookie with JADE_SESSION_COOKIE) is never propagated to the caller or logger.
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        if (status === 401 || status === 403) {
+          throw new Error(
+            `jade.io returned ${status}. The JADE_SESSION_COOKIE may have expired — re-extract it from your browser session.`,
+          );
+        }
+        throw new Error(`Failed to fetch jade.io article ${articleId}: ${error.message}`);
+      }
+      throw error;
+    }
     const text = extractTextFromHtml(html, url);
     const paragraphs = extractParagraphBlocks(html);
     const cleanedHtml = cleanHtmlForOutput(html);
