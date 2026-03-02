@@ -13,15 +13,37 @@ This document provides guidance for AI agents (Claude Code, Cursor, etc.) workin
 
 ```
 src/
-├── index.ts              # MCP server setup & tool registration
+├── index.ts              # MCP server setup & tool registration (9 tools)
+├── config.ts             # Configuration management (env vars with defaults)
+├── constants.ts          # Citation patterns, court codes, reporters, timeouts
+├── errors.ts             # Custom error classes (AustLiiError, NetworkError, ParseError, OcrError)
 ├── services/
-│   ├── austlii.ts       # AustLII search integration
-│   ├── jade.ts          # jade.io search (AustLII cross-reference), article resolution & citation lookup
-│   └── fetcher.ts       # Document text retrieval (HTML/PDF/OCR)
+│   ├── austlii.ts        # AustLII search, authority scoring, sort detection
+│   ├── citation.ts       # AGLC4 citation parsing, formatting, validation, pinpoints
+│   ├── fetcher.ts        # Document retrieval (HTML, PDF, OCR, jade.io)
+│   └── jade.ts           # jade.io article resolution, URL utilities, citation lookup
 ├── utils/
-│   └── formatter.ts     # Result formatting (JSON/text/markdown/html)
+│   ├── formatter.ts      # MCP response formatting (json/text/markdown/html)
+│   ├── logger.ts         # Structured levelled logging (LOG_LEVEL env var)
+│   ├── rate-limiter.ts   # Token bucket rate limiter (AustLII 10 req/min, jade.io 5 req/min)
+│   └── url-guard.ts      # SSRF protection (HTTPS-only, allowlisted hosts)
 └── test/
-    └── scenarios.test.ts # Real-world integration tests
+    ├── jade.test.ts          # jade.io integration tests
+    ├── scenarios.test.ts     # End-to-end search scenarios (live network, skipped in CI)
+    ├── fixtures/             # Static HTML fixtures for deterministic tests
+    └── unit/                 # Unit tests (~127 test cases)
+        ├── austlii.test.ts
+        ├── austlii-mock.test.ts
+        ├── citation.test.ts
+        ├── config.test.ts
+        ├── constants.test.ts
+        ├── errors.test.ts
+        ├── fetcher.test.ts
+        ├── fetcher-mock.test.ts
+        ├── formatter.test.ts
+        ├── logger.test.ts
+        ├── rate-limiter.test.ts
+        └── url-guard.test.ts
 ```
 
 ## Core Principles
@@ -46,8 +68,9 @@ src/
 ### 4. Real-World Testing
 - Tests hit live AustLII API (non-deterministic)
 - Validate with actual legal queries (e.g., "negligence duty of care")
-- Test scenarios in `src/test/scenarios.test.ts` must pass
-- 14 test scenarios covering search quality, relevance, and sorting modes
+- Live tests in `src/test/scenarios.test.ts` are skipped in CI (`process.env.CI`) to avoid flaky failures
+- 18 live test scenarios covering search quality, relevance, and sorting modes
+- Deterministic unit tests use HTML fixtures from `src/test/fixtures/`
 
 ## Development Guidelines
 
@@ -77,42 +100,41 @@ Every PR must include:
 ### Search Implementation Notes
 
 **Current AustLII search** (`src/services/austlii.ts`):
-- Uses `https://classic.austlii.edu.au/cgi-bin/sinosrch.cgi`
+- Uses `https://www.austlii.edu.au/cgi-bin/sinosrch.cgi` (configurable via `AUSTLII_SEARCH_BASE`)
 - Parameters: `method=boolean`, `query=...`, `meta=/austlii`, `view=date|relevance`
 - Parses `<ol><li>` result structure with Cheerio
 - **Smart query detection**:
   - `isCaseNameQuery()`: Detects "X v Y", "Re X", citation patterns, quoted strings
   - `determineSortMode()`: Auto-selects appropriate sorting
   - `boostTitleMatches()`: Re-ranks results by title match score for case name queries
+  - `calculateAuthorityScore()`: Weights results by court hierarchy (HCA=100, FCAFC=80, etc.)
 - **Configurable sorting**: Explicit control via `sortBy` parameter when needed
 
-**jade.io search** (`src/services/jade.ts`):
-- jade.io is a GWT SPA with **no public search API**
-- Search strategy: AustLII search → filter results with neutral citations → probe jade.io article pages → extract metadata from HTML `<title>` tag
-- Maximum 5 concurrent jade.io article resolutions to avoid overwhelming the server
-- Graceful fallback: if jade.io resolution fails, AustLII results are still returned
-- jade.io results preferred when deduplicating (better formatting)
-- **Key functions**:
-  - `searchJade(query, options)`: Full search via AustLII cross-reference
-  - `searchJadeByCitation(citation)`: Find article by neutral citation
-  - `deduplicateResults(results)`: Deduplicate by citation, preferring jade.io
-  - `mergeSearchResults(austlii, jade)`: Merge results from both sources
+**Citation service** (`src/services/citation.ts`):
+- `parseCitation()`: Extracts neutral and reported citations from free text
+- `formatAGLC4()`: Formats citations per AGLC4 rules (title, neutral, reported, pinpoint)
+- `validateCitation()`: HEAD-checks a neutral citation against AustLII, returns canonical URL
+- `generatePinpoint()`: Finds a paragraph by number or phrase in a `ParagraphBlock[]` array
+
+**jade.io service** (`src/services/jade.ts`):
+- jade.io is a GWT SPA with **no public search API**; `searchJade()` is a placeholder returning `[]` (pending API access from jade.io — see `docs/ROADMAP.md` "Should Have" items)
+- Article metadata resolution: `resolveArticle(articleId)` fetches the page `<title>` tag to extract case name and neutral citation without needing JavaScript execution
+- URL utilities: `isJadeUrl()`, `extractArticleId()`, `buildArticleUrl()`, `buildSearchUrl()`
+- Citation lookup: `buildCitationLookupUrl(citation)` returns a jade.io search URL the user can open
+- AustLII enrichment: `enrichWithJadeLinks(results)` adds a `jadeUrl` field to results that have a neutral citation
+- Key exports: `resolveArticle`, `resolveArticleFromUrl`, `articleToSearchResult`, `enrichWithJadeLinks`, `buildCitationLookupUrl`, `isJadeUrl`, `extractArticleId`
 
 **Document fetching** (`src/services/fetcher.ts`):
 - Handles HTML, PDF, and OCR fallback (Tesseract)
-- Extracts text while preserving `[N]` paragraph markers
+- Extracts text while preserving `[N]` paragraph markers as `ParagraphBlock[]`
+- Special parsing for jade.io document structure when a jade.io URL is detected
 - **Limitation**: Page numbers from reported judgements not extracted
 
 ## Common Tasks
 
 ### Adding a New Search Source
 
-> **Note**: jade.io search is now implemented using the AustLII cross-reference approach described below. See `src/services/jade.ts` for the working implementation. The pattern below can be adapted for additional sources.
-
 ```typescript
-// jade.io is already implemented - this pattern shows how to add another source
-// See src/services/jade.ts for the jade.io implementation
-
 // 1. Create new service file
 // src/services/newsource.ts
 export async function searchNewSource(
@@ -128,8 +150,13 @@ const [austliiResults, newResults] = await Promise.all([
   searchNewSource(query, options),
 ]);
 
-// 3. Deduplicate by citation (already implemented in jade.ts)
-const merged = deduplicateResults([...austliiResults, ...newResults]);
+// 3. Deduplicate by citation
+const seen = new Map<string, SearchResult>();
+for (const r of [...austliiResults, ...newResults]) {
+  const key = r.neutralCitation ?? r.url;
+  if (!seen.has(key)) seen.set(key, r);
+}
+const merged = [...seen.values()];
 
 // 4. Add tests
 it("should merge results from multiple sources", async () => {
@@ -164,10 +191,12 @@ function extractTextFromHtml(html: string): string {
 ```typescript
 // 1. Update SearchOptions interface in src/services/austlii.ts
 export interface SearchOptions {
-  jurisdiction?: "cth" | "vic" | "federal" | "other";
+  jurisdiction?: "cth" | "vic" | "nsw" | "qld" | "sa" | "wa" | "tas" | "nt" | "act" | "federal" | "nz" | "other";
   limit?: number;
   type: "case" | "legislation";
   sortBy?: "relevance" | "date" | "auto"; // ✅ IMPLEMENTED
+  method?: SearchMethod;
+  offset?: number;
 }
 
 // 2. Update Zod schema in src/index.ts
@@ -196,18 +225,14 @@ if (sortMode === "relevance" && isCaseNameQuery(query)) {
 ## Known Issues & Workarounds
 
 ### ~~Issue: Search returns citing cases, not target case~~ ✅ FIXED
-**Status**: Resolved in this PR
 **Solution**: Implemented intelligent sorting with auto-detection and title matching
-**Details**: See Phase 1 implementation in ROADMAP.md
 
 ### Issue: Page numbers lost in extraction
 **Workaround**: Use paragraph numbers for pinpoints
 **Fix planned**: Parse page markers from reported judgement HTML
 
 ### ~~Issue: No deduplication across sources~~ ✅ FIXED
-**Status**: Resolved with jade.io search integration
-**Solution**: `deduplicateResults()` deduplicates by neutral citation, preferring jade.io results
-**Details**: See `src/services/jade.ts` for implementation
+**Solution**: `enrichWithJadeLinks()` adds jade.io lookup URLs to AustLII results; jade.io search is a placeholder pending API access
 
 ## Resources
 
