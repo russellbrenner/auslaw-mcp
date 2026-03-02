@@ -21,7 +21,8 @@ src/
 │   ├── austlii.ts        # AustLII search, authority scoring, sort detection
 │   ├── citation.ts       # AGLC4 citation parsing, formatting, validation, pinpoints
 │   ├── fetcher.ts        # Document retrieval (HTML, PDF, OCR, jade.io)
-│   └── jade.ts           # jade.io article resolution, URL utilities, citation lookup
+│   ├── jade.ts           # jade.io article resolution, URL utilities, citation lookup
+│   └── jade-gwt.ts       # GWT-RPC utilities (avd2Request, encodeGwtInt, parseAvd2Response)
 ├── utils/
 │   ├── formatter.ts      # MCP response formatting (json/text/markdown/html)
 │   ├── logger.ts         # Structured levelled logging (LOG_LEVEL env var)
@@ -31,7 +32,7 @@ src/
     ├── jade.test.ts          # jade.io integration tests
     ├── scenarios.test.ts     # End-to-end search scenarios (live network, skipped in CI)
     ├── fixtures/             # Static HTML fixtures for deterministic tests
-    └── unit/                 # Unit tests (~127 test cases)
+    └── unit/                 # Unit tests (~163 test cases)
         ├── austlii.test.ts
         ├── austlii-mock.test.ts
         ├── citation.test.ts
@@ -41,6 +42,7 @@ src/
         ├── fetcher.test.ts
         ├── fetcher-mock.test.ts
         ├── formatter.test.ts
+        ├── jade-gwt.test.ts
         ├── logger.test.ts
         ├── rate-limiter.test.ts
         └── url-guard.test.ts
