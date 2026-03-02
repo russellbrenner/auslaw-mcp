@@ -393,6 +393,7 @@ src/
 ├── index.ts              # MCP server & tool registration (9 tools)
 ├── config.ts             # Configuration management
 ├── constants.ts          # Citation patterns, court codes, reporters
+├── errors.ts             # Custom error classes
 ├── services/
 │   ├── austlii.ts        # AustLII search and authority scoring
 │   ├── citation.ts       # AGLC4 citation formatting, validation, pinpoints
@@ -400,17 +401,25 @@ src/
 │   └── jade.ts           # jade.io article resolution and enrichment
 ├── utils/
 │   ├── formatter.ts      # MCP response formatting (json/text/markdown/html)
+│   ├── logger.ts         # Structured levelled logging
 │   ├── rate-limiter.ts   # Token bucket rate limiter (AustLII, jade.io)
 │   └── url-guard.ts      # SSRF protection (HTTPS-only, allowlisted hosts)
 └── test/
     ├── jade.test.ts       # jade.io integration tests
     ├── scenarios.test.ts  # End-to-end search scenarios (live network)
-    └── unit/              # Unit tests (153 tests, 79% coverage)
+    ├── fixtures/          # Static HTML fixtures for deterministic tests
+    ├── performance/       # Performance benchmarks
+    └── unit/              # Unit tests (~127 test cases)
         ├── austlii.test.ts
+        ├── austlii-mock.test.ts
         ├── citation.test.ts
         ├── config.test.ts
+        ├── constants.test.ts
+        ├── errors.test.ts
         ├── fetcher.test.ts
+        ├── fetcher-mock.test.ts
         ├── formatter.test.ts
+        ├── logger.test.ts
         ├── rate-limiter.test.ts
         └── url-guard.test.ts
 
