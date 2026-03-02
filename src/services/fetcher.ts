@@ -256,10 +256,7 @@ export async function fetchDocumentText(url: string): Promise<FetchResponse> {
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      if (
-        isJadeUrl(url) &&
-        (error.response?.status === 401 || error.response?.status === 403)
-      ) {
+      if (isJadeUrl(url) && (error.response?.status === 401 || error.response?.status === 403)) {
         throw new Error(
           `jade.io returned ${error.response.status}. Set JADE_SESSION_COOKIE env var with your authenticated session cookie.`,
         );

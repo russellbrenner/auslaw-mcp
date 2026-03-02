@@ -42,8 +42,7 @@ export interface JadeArticle {
 const JADE_SEARCH_URL = `${config.jade.baseUrl}/search`;
 
 /** jade.io's generic/fallback title when an article isn't publicly accessible */
-const JADE_GENERIC_TITLE =
-  "BarNet Jade - Find recent Australian legal decisions";
+const JADE_GENERIC_TITLE = "BarNet Jade - Find recent Australian legal decisions";
 
 /** Neutral citation pattern: [YYYY] COURT NUM */
 const NEUTRAL_CITATION_RE = /\[(\d{4})\]\s+([A-Z]+(?:\s+[A-Z]+)?)\s+(\d+)/;
@@ -205,9 +204,7 @@ export async function resolveArticle(articleId: number): Promise<JadeArticle> {
       maxContentLength: 5 * 1024 * 1024,
     });
 
-    const html: string = typeof response.data === "string"
-      ? response.data
-      : String(response.data);
+    const html: string = typeof response.data === "string" ? response.data : String(response.data);
 
     // Extract <title> tag content
     const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
@@ -327,10 +324,7 @@ export function enrichWithJadeLinks(
  * @param _options - Search options (jurisdiction, limit, etc.)
  * @returns Empty array (no public API available)
  */
-export async function searchJade(
-  _query: string,
-  _options: SearchOptions,
-): Promise<SearchResult[]> {
+export async function searchJade(_query: string, _options: SearchOptions): Promise<SearchResult[]> {
   // jade.io does not expose a public search API.
   // This function is a placeholder for future integration.
   // When API access is available, implement search here.
