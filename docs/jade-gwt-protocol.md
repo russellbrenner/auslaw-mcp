@@ -6,6 +6,7 @@ HAR sources:
 - `jade.io_03-02-2026-13-48-33.har`: article 67401 navigation (article content)
 - `jade.io_03-03-2026-10-08-59.har`: "Mabo " and "rice v as" searches (case search)
 - `jade-ground-truth.har` (2026-03-03): six controlled queries with Chrome navigation to confirm true article IDs
+- `jade-citator.har` (2026-03-03): citator search for Mabo [1992] HCA 23 (695 citing cases)
 
 ---
 
@@ -135,6 +136,76 @@ Ground-truth article IDs confirmed via Chrome navigation (2026-03-03):
 
 ---
 
+## search (LeftoverRemoteService) — Citator ("Who Cites This Case?")
+
+Performs a citation-context search: given a case's citable ID, returns cases that cite it.
+
+### Key Concepts
+
+- **Citable ID**: An internal jade.io identifier in the **2M-10M range** (e.g., Mabo = 2463606, GWT: "JZd2").
+  This is NOT the same as the article ID (100-2M range) used in `jade.io/article/{id}` URLs.
+- **How to get a citable ID**: Call `proposeCitables` first, parse the flat array with
+  `extractCitableIds()`, and use the last citable ID (primary match).
+
+### Two-Phase Flow
+
+```
+1. proposeCitables(caseName)   → flatArray → extractCitableIds() → citableId
+2. LeftoverRemoteService.search(citableId) → parseCitatorResponse() → { results, totalCount }
+```
+
+See `searchCitingCases()` in `src/services/jade.ts`.
+
+### Request
+
+Static template with the citable ID (GWT-encoded) at string table position 12.
+Template captured verbatim from `jade-citator.har` (2026-03-03). Byte-for-byte verified.
+
+See `buildCitatorSearchRequest()` in `src/services/jade-gwt.ts`.
+
+Criteria encoded in the template:
+- Sort: effective date descending
+- IgnoreSelfCitations: true
+- IgnoreShortCitations: true (repeated citations in short sections)
+
+### Response Format
+
+The response uses GWT's `.concat()` segment joining for arrays exceeding 32768 elements:
+
+```
+//OK[seg1...].concat([seg2..., [type_table], [string_table], 4, 7])
+```
+
+See `parseGwtConcatResponse()` in `src/services/jade-gwt.ts`.
+
+After reassembly:
+- `string_table` = `fullArray[fullArray.length - 3]` (1647 entries for Mabo)
+- `type_table` = `fullArray[fullArray.length - 4]` (6893 entries for Mabo)
+- `flat_array` = `fullArray.slice(0, fullArray.length - 3)` (46850 entries for Mabo)
+
+### Parsing Strategy
+
+`parseCitatorResponse()` in `src/services/jade-gwt.ts`:
+
+1. **Article ID map**: scan string table for `jade.io/article/src/{id}/` URLs; for each, look
+   ±30 positions for a non-zero-padded neutral citation to build a citation → article ID map.
+2. **Citations**: scan string table for non-zero-padded neutral citations (`/^\[\d{4}\]\s+[A-Z]/`)
+   shorter than 40 chars.
+3. **Case names**: for each citation, scan forward (idx+1..idx+10), then backward (idx-1..idx-20)
+   for a string containing ` v ` or ` & `. Strip trailing `[citation]` suffix.
+4. **totalCount**: scan last 2500 elements of flat array for a positive integer preceded by `5`
+   (Article type index) and followed by a value < -1000 (large string table reference).
+
+### Known Data
+
+| Case | Citable ID | GWT | Total Citing Cases |
+|------|-----------|-----|--------------------|
+| Mabo v Queensland (No 2) [1992] HCA 23 | 2463606 | JZd2 | 695 |
+
+**Stuart v South Australia [2025] HCA 12** (article 1127773) confirmed as citing Mabo in this fixture.
+
+---
+
 ## avd2Request (ArticleViewRemoteService) — Article Content
 
 Primary method for loading article content. Reliably returns full article HTML including paragraph anchors.
@@ -184,5 +255,5 @@ Strong names (type hashes) change when jade.io redeploys its GWT application. If
 ## Why Not Other Methods?
 
 - `searchArticles` (JadeRemoteService): returns only GWT-encoded article IDs, no case names — requires a second metadata call per result
-- `search` (LeftoverRemoteService): citation context search ("who cites this article"), NOT freetext case search
+- `search` (LeftoverRemoteService): citation context search ("who cites this article") — implemented as `search_citing_cases` MCP tool
 - `proposeCitables` is the only method that returns full case search results in a single call

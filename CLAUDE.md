@@ -20,9 +20,9 @@ npm run lint:fix       # Auto-fix lint issues
 
 ## Key Architecture
 
-- `src/index.ts` - MCP server, 9 tool registrations
-- `src/services/jade-gwt.ts` - GWT-RPC protocol: `proposeCitables` (search), `avd2Request` (fetch), strong names, GWT encoding
-- `src/services/jade.ts` - jade.io integration: `searchJade`, `resolveArticle`, bridge section resolution
+- `src/index.ts` - MCP server, 10 tool registrations
+- `src/services/jade-gwt.ts` - GWT-RPC protocol: `proposeCitables` (search), `avd2Request` (fetch), citator, strong names, GWT encoding
+- `src/services/jade.ts` - jade.io integration: `searchJade`, `resolveArticle`, `searchCitingCases`, bridge section resolution
 - `src/services/austlii.ts` - AustLII search with authority-based ranking
 - `src/services/citation.ts` - AGLC4 formatting, validation, pinpoints
 - `src/services/fetcher.ts` - Document retrieval (HTML, PDF, OCR, jade.io GWT-RPC)
@@ -35,8 +35,10 @@ The jade.io integration uses reverse-engineered GWT-RPC (Google Web Toolkit Remo
 - **Strong names** change on jade.io redeployment; update from HAR captures (see below)
 - **proposeCitables** = search/autocomplete endpoint (JadeRemoteService)
 - **avd2Request** = fetch judgment content (ArticleViewRemoteService)
-- **LeftoverRemoteService** = citation search ("who cites this article") - planned, not yet implemented
+- **LeftoverRemoteService** = citation search ("who cites this article") - implemented as `search_citing_cases` tool
 - **Bridge section** = last ~10% of proposeCitables flat array; contains record-ID/article-ID pairs
+- **Citable IDs** = internal IDs in 2M-10M range (different from article IDs 100-2M); input to citator
+- **`.concat()` responses** = GWT splits arrays >32768 elements via `.concat()` join; `parseGwtConcatResponse()` handles this
 - Article IDs are resolved via public GET to `jade.io/article/{id}` (no session cookie needed)
 
 ### Strong name updates
@@ -45,7 +47,7 @@ When jade.io redeploys, the GWT strong names (type hashes) change. To update:
 1. Capture a HAR from jade.io (see Proxyman workflow below)
 2. Find the `jadeService.do` POST requests
 3. Extract the new strong name from the request body (field 4 in the pipe-delimited GWT-RPC payload)
-4. Update constants in `src/services/jade-gwt.ts`: `JADE_STRONG_NAME`, `AVD2_STRONG_NAME`, `JADE_PERMUTATION`
+4. Update constants in `src/services/jade-gwt.ts`: `JADE_STRONG_NAME`, `AVD2_STRONG_NAME`, `LEFTOVER_STRONG_NAME`, `JADE_PERMUTATION`
 5. Update `docs/jade-gwt-protocol.md`
 
 ## Proxyman Debug Workflow
