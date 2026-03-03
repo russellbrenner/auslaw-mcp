@@ -15,6 +15,7 @@ import {
   parseAvd2Response,
   parseGwtConcatResponse,
   parseCitatorResponse,
+  extractCitableIds,
   AVD2_STRONG_NAME,
   JADE_STRONG_NAME,
 } from "../../services/jade-gwt.js";
@@ -514,5 +515,37 @@ describe("parseCitatorResponse", () => {
     const { results, totalCount } = parseCitatorResponse("//OK[4,7]");
     expect(results).toEqual([]);
     expect(totalCount).toBe(0);
+  });
+});
+
+describe("extractCitableIds", () => {
+  it("finds JZd2 = 2463606 (Mabo [1992] HCA 23 citable ID) in mabo fixture", () => {
+    const fixture = readFixture("propose-citables-mabo.txt");
+    const { flatArray } = parseProposeCitablesResponse(fixture);
+    const citableIds = extractCitableIds(flatArray);
+    expect(citableIds.some((c) => c.citableId === 2463606)).toBe(true);
+  });
+
+  it("returns citable IDs in the 2M-10M range", () => {
+    const fixture = readFixture("propose-citables-mabo.txt");
+    const { flatArray } = parseProposeCitablesResponse(fixture);
+    const citableIds = extractCitableIds(flatArray);
+    expect(citableIds.length).toBeGreaterThan(0);
+    for (const c of citableIds) {
+      expect(c.citableId).toBeGreaterThanOrEqual(2_000_000);
+      expect(c.citableId).toBeLessThanOrEqual(10_000_000);
+    }
+  });
+
+  it("returns roughly one to three citable IDs per search result", () => {
+    const fixture = readFixture("propose-citables-mabo.txt");
+    const { results, flatArray } = parseProposeCitablesResponse(fixture);
+    const citableIds = extractCitableIds(flatArray);
+    expect(citableIds.length).toBeGreaterThanOrEqual(results.length);
+    expect(citableIds.length).toBeLessThanOrEqual(results.length * 5);
+  });
+
+  it("returns empty array for empty flat array", () => {
+    expect(extractCitableIds([])).toEqual([]);
   });
 });

@@ -841,3 +841,45 @@ export function extractBridgeCandidates(flatArray: unknown[]): BridgeCandidate[]
 
   return [...high, ...medium].slice(0, 30);
 }
+
+export interface ExtractedCitableId {
+  /** Position in the flat array */
+  flatPos: number;
+  /** Decoded citable ID (2M-10M range) */
+  citableId: number;
+  /** Original GWT-encoded string */
+  gwtEncoded: string;
+}
+
+/**
+ * Extracts citable IDs from the data section of a proposeCitables flat array.
+ *
+ * Citable IDs are GWT-encoded integers in the 2M-10M range, distinct from:
+ * - Article IDs (100-2M): used in jade.io/article/{id} URLs
+ * - Record IDs (10M+): internal bridge section lookups
+ *
+ * Citable IDs appear in the first 30% of the flat array (the "citable objects"
+ * section), not in the bridge section (last 10%). They are required as input
+ * to LeftoverRemoteService.search (citator).
+ *
+ * Ground truth: Mabo [1992] HCA 23 → citable ID 2463606 (GWT: "JZd2"),
+ * confirmed across 4 independent HAR captures at flat[3724] in proposeCitables.
+ */
+export function extractCitableIds(flatArray: unknown[]): ExtractedCitableId[] {
+  const results: ExtractedCitableId[] = [];
+  // Scan only the first 30% (citable objects section, not the bridge section)
+  const scanEnd = Math.floor(flatArray.length * 0.3);
+
+  for (let i = 0; i < scanEnd; i++) {
+    const v = flatArray[i];
+    if (typeof v !== "string" || v.length < 3 || v.length > 5) continue;
+    if (!isGwtEncodedInt(v)) continue;
+
+    const decoded = decodeGwtInt(v);
+    if (decoded >= 2_000_000 && decoded <= 10_000_000) {
+      results.push({ flatPos: i, citableId: decoded, gwtEncoded: v });
+    }
+  }
+
+  return results;
+}
