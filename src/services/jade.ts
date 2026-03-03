@@ -1,12 +1,14 @@
 import axios from "axios";
 import type { SearchResult, SearchOptions } from "./austlii.js";
 import { config } from "../config.js";
+import { jadeRateLimiter } from "../utils/rate-limiter.js";
 import {
   buildAvd2Request,
   parseAvd2Response,
+  buildProposeCitablesRequest,
+  parseProposeCitablesResponse,
   JADE_MODULE_BASE,
   JADE_PERMUTATION,
-  AVD2_STRONG_NAME,
 } from "./jade-gwt.js";
 
 /**
@@ -320,22 +322,87 @@ export function enrichWithJadeLinks(
 }
 
 /**
- * Placeholder for future jade.io search integration.
- * Currently returns an empty array since jade.io does not expose
- * a public search API.
+ * Searches jade.io using the proposeCitables GWT-RPC method.
  *
- * When/if jade.io provides API access, this function will perform
- * searches and return results in the standard SearchResult format.
+ * proposeCitables is jade.io's internal search/autocomplete endpoint, reverse-engineered
+ * from HAR analysis (2026-03-03). It returns case names, neutral citations, reported
+ * citations, and jade.io article IDs in a single response.
  *
- * @param _query - Search query string
- * @param _options - Search options (jurisdiction, limit, etc.)
- * @returns Empty array (no public API available)
+ * Requires JADE_SESSION_COOKIE. Returns an empty array (graceful degradation) if the
+ * cookie is not configured or if the request fails — jade search failure should not
+ * prevent AustLII results from being returned.
+ *
+ * @param query - Search query string
+ * @param options - Search options (type, jurisdiction, limit, etc.)
+ * @returns Array of SearchResult objects, empty if search fails or cookie is missing
  */
-export async function searchJade(_query: string, _options: SearchOptions): Promise<SearchResult[]> {
-  // jade.io does not expose a public search API.
-  // This function is a placeholder for future integration.
-  // When API access is available, implement search here.
-  return [];
+export async function searchJade(query: string, options: SearchOptions): Promise<SearchResult[]> {
+  if (!config.jade.sessionCookie) {
+    return [];
+  }
+
+  try {
+    await jadeRateLimiter.throttle();
+
+    const requestBody = buildProposeCitablesRequest(query);
+    const url = `${config.jade.baseUrl}/jadeService.do`;
+
+    const response = await axios.post(url, requestBody, {
+      headers: {
+        "Content-Type": "text/x-gwt-rpc; charset=UTF-8",
+        "X-GWT-Module-Base": JADE_MODULE_BASE,
+        "X-GWT-Permutation": JADE_PERMUTATION,
+        Origin: "https://jade.io",
+        Referer: "https://jade.io/",
+        "User-Agent": config.jade.userAgent,
+        Cookie: config.jade.sessionCookie,
+      },
+      timeout: config.jade.timeout,
+      responseType: "text",
+      maxContentLength: 5 * 1024 * 1024,
+    });
+
+    const parsed = parseProposeCitablesResponse(response.data as string);
+
+    const results: SearchResult[] = parsed.map((item) => {
+      // Extract jurisdiction from neutral citation (reuse existing court → jurisdiction map)
+      const courtMatch = item.neutralCitation.match(/\[\d{4}\]\s+([A-Z]+(?:\s+[A-Z]+)?)\s+\d+/);
+      const court = courtMatch?.[1]?.replace(/\s+/g, "");
+      const jurisdiction = court ? COURT_TO_JURISDICTION[court] : undefined;
+      const yearMatch = item.neutralCitation.match(/\[(\d{4})\]/);
+
+      return {
+        title: item.caseName,
+        neutralCitation: item.neutralCitation,
+        reportedCitation: item.reportedCitation,
+        url: item.jadeUrl,
+        source: "jade" as const,
+        type: options.type,
+        jurisdiction,
+        year: yearMatch?.[1],
+      };
+    });
+
+    // Apply jurisdiction filter
+    const filtered = options.jurisdiction
+      ? results.filter((r) => !r.jurisdiction || r.jurisdiction === options.jurisdiction)
+      : results;
+
+    // Apply limit
+    const limit = options.limit ?? filtered.length;
+    return filtered.slice(0, limit);
+  } catch (error) {
+    // Sanitise AxiosError to prevent session cookie leaking into error messages
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      console.warn(
+        `jade.io proposeCitables search failed${status ? ` (HTTP ${status})` : ""} — returning empty results`,
+      );
+    } else {
+      console.warn("jade.io search failed:", error instanceof Error ? error.message : String(error));
+    }
+    return [];
+  }
 }
 
 // ── GWT-RPC Content Fetching ───────────────────────────────────────────
