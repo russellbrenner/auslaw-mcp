@@ -185,12 +185,20 @@ describe("decodeGwtInt", () => {
     expect(decodeGwtInt("QdJ")).toBe(67401);
   });
 
-  it("decodes 'CwFj' as 721251 (Mabo [1992] HCA 23 article ID from HAR)", () => {
+  it("decodes 'CwFj' as 721251 (Mabo [1992] HCA 23 Citable ID — NOT the article URL ID)", () => {
     expect(decodeGwtInt("CwFj")).toBe(721251);
   });
 
-  it("decodes 'CwEa' as 721178 ([1988] HCA 69 article ID from HAR)", () => {
+  it("decodes 'CwEa' as 721178 ([1988] HCA 69 Citable ID — NOT the article URL ID)", () => {
     expect(decodeGwtInt("CwEa")).toBe(721178);
+  });
+
+  it("decodes 'UGn' as 82343 (Mabo [1992] HCA 23 article URL ID)", () => {
+    expect(decodeGwtInt("UGn")).toBe(82343);
+  });
+
+  it("decodes 'UGE' as 82308 (Mabo [1988] HCA 69 article URL ID)", () => {
+    expect(decodeGwtInt("UGE")).toBe(82308);
   });
 
   it("is the inverse of encodeGwtInt for round-trip", () => {
@@ -249,8 +257,8 @@ describe("parseProposeCitablesResponse", () => {
     const mabo = results.find((r) => r.neutralCitation === "[1992] HCA 23");
     expect(mabo).toBeDefined();
     expect(mabo!.caseName).toContain("Mabo");
-    expect(mabo!.articleId).toBe(721251);
-    expect(mabo!.jadeUrl).toBe("https://jade.io/article/721251");
+    expect(mabo!.articleId).toBe(82343);
+    expect(mabo!.jadeUrl).toBe("https://jade.io/article/82343");
   });
 
   it("extracts reported citation 175 CLR 1 for Mabo [1992] HCA 23", () => {
@@ -272,7 +280,7 @@ describe("parseProposeCitablesResponse", () => {
     const mabo2 = results.find((r) => r.neutralCitation === "[1988] HCA 69");
     expect(mabo2).toBeDefined();
     expect(mabo2!.caseName).toContain("Mabo");
-    expect(mabo2!.articleId).toBe(721178);
+    expect(mabo2!.articleId).toBe(82308);
     expect(mabo2!.reportedCitation).toContain("166 CLR");
   });
 

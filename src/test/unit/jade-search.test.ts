@@ -101,7 +101,7 @@ describe("searchJade", () => {
     expect(hca23!.source).toBe("jade");
     expect(hca23!.type).toBe("case");
     expect(hca23!.title).toContain("Mabo");
-    expect(hca23!.url).toBe("https://jade.io/article/721251");
+    expect(hca23!.url).toBe("https://jade.io/article/82343");
     expect(hca23!.reportedCitation).toContain("175 CLR 1");
   });
 

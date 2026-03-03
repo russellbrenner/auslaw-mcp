@@ -71,8 +71,8 @@ The parser (`parseProposeCitablesResponse()` in `src/services/jade-gwt.ts`) uses
    - `[YYYY] COURT NUM - document in Jade` (neutral citation only)
 
 2. **Article ID** location in the flat array:
-   - For descriptors with `;`: article ID is at `flat_pos + 2` (after the reported citation string reference)
-   - For descriptors without `;`: article ID is at `flat_pos - 1` (immediately before the descriptor reference)
+   - For descriptors with `;`: article ID is at `flat_pos - 3` (before the two zero-padding values)
+   - For descriptors without `;`: article ID is at `flat_pos + 4` (after Provenance class ref + [11, 1])
 
 3. **Case name** lookup in the string table:
    - Scan backward from the descriptor's string table index, looking for a string containing ` v `
@@ -83,10 +83,14 @@ The parser (`parseProposeCitablesResponse()` in `src/services/jade-gwt.ts`) uses
 
 ### Known Data (from "Mabo " query)
 
-| Result | Article ID | Descriptor |
-|--------|-----------|------------|
-| Mabo v Queensland (No 2) | 721251 (CwFj) | `[1992] HCA 23; 175 CLR 1` |
-| Mabo v Queensland | 721178 (CwEa) | `[1988] HCA 69; 166 CLR 186` |
+| Result | Article ID (URL) | Citable ID (internal) | Descriptor |
+|--------|-----------------|----------------------|------------|
+| Mabo v Queensland (No 2) | 82343 (UGn) | 721251 (CwFj) | `[1992] HCA 23; 175 CLR 1` |
+| Mabo v Queensland | 82308 (UGE) | 721178 (CwEa) | `[1988] HCA 69; 166 CLR 186` |
+
+**Article IDs** (3-char GWT, ~82k range) are used in `jade.io/article/{id}` URLs.
+**Citable IDs** (4-char GWT, ~721k range) are jade.io's internal citation object IDs. They are
+NOT URL-addressable — resolving them via `/article/{id}` returns unrelated content.
 
 ---
 
@@ -107,8 +111,10 @@ GWT uses a custom base-64 charset: `A-Z (0-25), a-z (26-51), 0-9 (52-61), $ (62)
 
 Examples:
 - `67401` = "QdJ"
-- `721251` = "CwFj"
-- `721178` = "CwEa"
+- `82343` = "UGn" (Mabo [1992] HCA 23 article URL ID)
+- `82308` = "UGE" (Mabo [1988] HCA 69 article URL ID)
+- `721251` = "CwFj" (Mabo [1992] HCA 23 Citable ID — not URL-addressable)
+- `721178` = "CwEa" (Mabo [1988] HCA 69 Citable ID — not URL-addressable)
 - `1182103` = "EgmX"
 
 ---

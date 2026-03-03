@@ -386,10 +386,10 @@ export interface ProposeCitablesResult {
  *
  * - Descriptors have the form `"[YYYY] COURT NUM; REPORTER VOL PAGE - document in Jade"`
  *   (with reported citation) or `"[YYYY] COURT NUM - document in Jade"` (neutral only).
- * - For descriptors with ";": the article ID is at flat_pos + 2 (the integer following
- *   the reported-citation string reference).
- * - For descriptors without ";": the article ID is at flat_pos - 1 (placed immediately
- *   before the descriptor reference in the flat array).
+ * - For descriptors with ";": article ID is at flat_pos - 3 (three positions before the
+ *   descriptor, immediately before the two zero padding values).
+ * - For descriptors without ";": article ID is at flat_pos + 4 (after the Provenance class
+ *   ref and two type tokens [11, 1]).
  * - Case names are found by scanning backward in the string table from the descriptor
  *   position, looking for the first string containing " v ".
  *
@@ -511,8 +511,8 @@ export function parseProposeCitablesResponse(responseText: string): ProposeCitab
 
     for (const flatPos of flatPositions) {
       const gwtCandidate = hasSemicolon
-        ? flatArray[flatPos + 2]
-        : flatArray[flatPos - 1];
+        ? flatArray[flatPos - 3]
+        : flatArray[flatPos + 4];
 
       if (isGwtEncoded(gwtCandidate)) {
         articleId = decodeGwtInt(gwtCandidate);
