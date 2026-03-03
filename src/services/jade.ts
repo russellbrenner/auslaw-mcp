@@ -8,9 +8,15 @@ import {
   buildProposeCitablesRequest,
   parseProposeCitablesResponse,
   extractBridgeCandidates,
+  extractCitableIds,
+  buildCitatorSearchRequest,
+  parseCitatorResponse,
+  type CitingCase,
   JADE_MODULE_BASE,
   JADE_PERMUTATION,
 } from "./jade-gwt.js";
+
+export type { CitingCase };
 
 /**
  * jade.io integration service
@@ -504,4 +510,98 @@ export async function fetchJadeArticleContent(
   });
 
   return parseAvd2Response(response.data as string);
+}
+
+// ── Citator ────────────────────────────────────────────────────────────
+
+/**
+ * Returns { results, totalCount } for `searchCitingCases` calls.
+ */
+export interface CitatorSearchResult {
+  results: CitingCase[];
+  /** Total number of citing cases in jade.io (results is a subset) */
+  totalCount: number;
+}
+
+/**
+ * Finds cases that cite the given case name on jade.io.
+ *
+ * ## Flow
+ * 1. Search `proposeCitables` to find the case and extract its citable ID
+ * 2. Use the citable ID to call `LeftoverRemoteService.search` (citator)
+ * 3. Parse the citator response and return citing cases with totalCount
+ *
+ * Requires JADE_SESSION_COOKIE. Returns empty results (graceful degradation)
+ * if the cookie is not configured or any request fails.
+ *
+ * @param caseName - Case name or citation to look up (passed to proposeCitables)
+ * @returns Citing cases found on jade.io, plus the total count
+ */
+export async function searchCitingCases(caseName: string): Promise<CitatorSearchResult> {
+  const empty: CitatorSearchResult = { results: [], totalCount: 0 };
+
+  if (!config.jade.sessionCookie) {
+    return empty;
+  }
+
+  try {
+    await jadeRateLimiter.throttle();
+
+    const url = `${config.jade.baseUrl}/jadeService.do`;
+    const gwt_headers = {
+      "Content-Type": "text/x-gwt-rpc; charset=UTF-8",
+      "X-GWT-Module-Base": JADE_MODULE_BASE,
+      "X-GWT-Permutation": JADE_PERMUTATION,
+      Origin: "https://jade.io",
+      Referer: "https://jade.io/",
+      "User-Agent": config.jade.userAgent,
+      Cookie: config.jade.sessionCookie,
+    };
+
+    // Step 1: proposeCitables to get the citable ID
+    const proposeBody = buildProposeCitablesRequest(caseName);
+    const proposeResponse = await axios.post(url, proposeBody, {
+      headers: gwt_headers,
+      timeout: config.jade.timeout,
+      responseType: "text",
+      maxContentLength: 5 * 1024 * 1024,
+    });
+
+    const { flatArray } = parseProposeCitablesResponse(proposeResponse.data as string);
+    const citableIds = extractCitableIds(flatArray);
+
+    if (citableIds.length === 0) {
+      return empty;
+    }
+
+    // Use the last citable ID: they appear in reverse order relative to descriptors,
+    // so the last one corresponds to the primary (best-match) case.
+    const primaryCitableId = citableIds[citableIds.length - 1]!.citableId;
+
+    // Step 2: LeftoverRemoteService.search with the citable ID
+    await jadeRateLimiter.throttle();
+    const citatorBody = buildCitatorSearchRequest(primaryCitableId);
+    const citatorResponse = await axios.post(url, citatorBody, {
+      headers: gwt_headers,
+      timeout: config.jade.timeout,
+      responseType: "text",
+      maxContentLength: 5 * 1024 * 1024,
+    });
+
+    const { results, totalCount } = parseCitatorResponse(citatorResponse.data as string);
+    return { results, totalCount };
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      console.warn(
+        `jade.io citator search failed${status ? ` (HTTP ${status})` : ""} — returning empty results`,
+      );
+    } else {
+      console.warn(
+        "jade.io citator search failed:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    return empty;
+  }
 }
