@@ -445,6 +445,162 @@ export function isGwtEncodedInt(v: unknown): v is string {
   return [...v].every((c) => GWT_CHARSET.includes(c));
 }
 
+/** A case that cites the target case, extracted from a citator response */
+export interface CitingCase {
+  /** Case name (e.g., "Stuart v South Australia") */
+  caseName: string;
+  /** Neutral citation (e.g., "[2025] HCA 12") */
+  neutralCitation: string;
+  /** Reported citation if available */
+  reportedCitation?: string;
+  /** jade.io article ID if extractable from response */
+  articleId?: number;
+  /** jade.io article URL (direct or search fallback) */
+  jadeUrl: string;
+  /** Court name if extractable */
+  court?: string;
+}
+
+/**
+ * Parses a LeftoverRemoteService.search GWT-RPC response and extracts citing cases.
+ *
+ * ## Parsing Strategy
+ *
+ * The response uses parseGwtConcatResponse (segmented array format). The string
+ * table contains per-case data blocks with neutral citations, case names, article
+ * source URLs, and more. This function:
+ *
+ * 1. Scans the string table for non-zero-padded neutral citations
+ * 2. For each, searches forward (then backward) for a case name containing " v " or " & "
+ * 3. Extracts article IDs from nearby "jade.io/article/src/{id}/" URLs
+ * 4. Extracts the total result count from the flat array
+ *
+ * @param responseText - Raw GWT-RPC response (may use .concat() format)
+ * @returns { results, totalCount }
+ */
+export function parseCitatorResponse(
+  responseText: string,
+): { results: CitingCase[]; totalCount: number } {
+  const { flatArray, stringTable } = parseGwtConcatResponse(responseText);
+
+  if (flatArray.length === 0 || stringTable.length === 0) {
+    return { results: [], totalCount: 0 };
+  }
+
+  // Step 1: Build citation -> articleId map from "jade.io/article/src/{id}/" URLs
+  // Each src URL appears within a few positions of its neutral citation in the string table
+  const citToArticleId = new Map<string, number>();
+  for (let i = 0; i < stringTable.length; i++) {
+    const s = stringTable[i];
+    if (typeof s !== "string") continue;
+    const urlMatch = s.match(/\/article\/src\/(\d+)\//);
+    if (!urlMatch) continue;
+    const artId = parseInt(urlMatch[1]!, 10);
+    // Search nearby string table entries for a neutral citation
+    for (let j = Math.max(0, i - 30); j <= Math.min(stringTable.length - 1, i + 30); j++) {
+      if (j === i) continue;
+      const nearby = stringTable[j];
+      if (
+        typeof nearby === "string" &&
+        /^\[\d{4}\]\s+[A-Z]/.test(nearby) &&
+        nearby.length < 40 &&
+        !/\s+0\d/.test(nearby) &&
+        !nearby.includes("/")
+      ) {
+        if (!citToArticleId.has(nearby)) {
+          citToArticleId.set(nearby, artId);
+        }
+      }
+    }
+  }
+
+  // Step 2: Extract unique neutral citations and match case names
+  const seen = new Set<string>();
+  const results: CitingCase[] = [];
+
+  for (let i = 0; i < stringTable.length; i++) {
+    const s = stringTable[i];
+    if (typeof s !== "string") continue;
+
+    // Must be a non-zero-padded neutral citation in short form
+    if (!/^\[\d{4}\]\s+[A-Z]/.test(s) || s.length >= 40) continue;
+    if (/\s+0\d/.test(s)) continue; // skip zero-padded form
+    if (s.includes("/") || s.includes("$")) continue; // skip type descriptors
+
+    const normCit = s.trim();
+    if (seen.has(normCit)) continue;
+
+    // Find case name: scan forward first (idx+1..idx+10), then backward
+    let caseName: string | undefined;
+    for (let j = i + 1; j <= Math.min(stringTable.length - 1, i + 10); j++) {
+      const candidate = stringTable[j];
+      if (typeof candidate !== "string") continue;
+      // Stop if we hit another citation or GWT type descriptor
+      if (/^\[\d{4}\]/.test(candidate) && !candidate.includes(normCit)) break;
+      if (candidate.includes("au.com.barnet") || candidate.includes("java.util")) break;
+
+      // Prefer entries that contain " v " or " & " and are short enough to be a case name
+      const hasCaseMarker = candidate.includes(" v ") || candidate.includes(" & ");
+      if (!hasCaseMarker) continue;
+
+      // Strip trailing citation if present (e.g., "Name v Party [YYYY] COURT N ...")
+      const bracketIdx = candidate.indexOf("[");
+      const rawName = bracketIdx > 0 ? candidate.substring(0, bracketIdx).trim() : candidate;
+      if (rawName.length > 5 && rawName.length < 120) {
+        caseName = rawName;
+        break;
+      }
+    }
+
+    if (!caseName) {
+      // Backward scan fallback
+      for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
+        const candidate = stringTable[j];
+        if (typeof candidate !== "string") continue;
+        if (/^\[\d{4}\]/.test(candidate) || candidate.includes("au.com.barnet")) break;
+        const hasCaseMarker = candidate.includes(" v ") || candidate.includes(" & ");
+        if (!hasCaseMarker || candidate.startsWith("file:")) continue;
+        const bracketIdx = candidate.indexOf("[");
+        const rawName = bracketIdx > 0 ? candidate.substring(0, bracketIdx).trim() : candidate;
+        if (rawName.length > 5 && rawName.length < 120) {
+          caseName = rawName;
+          break;
+        }
+      }
+    }
+
+    if (!caseName) continue;
+    seen.add(normCit);
+
+    const articleId = citToArticleId.get(normCit);
+    const jadeUrl = articleId
+      ? `https://jade.io/article/${articleId}`
+      : `https://jade.io/search/${encodeURIComponent(normCit)}`;
+
+    results.push({ caseName, neutralCitation: normCit, articleId, jadeUrl });
+  }
+
+  // Step 3: Extract total count from flat array
+  // In the CitableSearchResults GWT structure, totalCount is a positive integer
+  // preceded by the integer 5 (GWT type index for Article) and followed by a
+  // large negative string-table reference (< -1000). This pattern reliably
+  // identifies the totalCount field.
+  let totalCount = results.length;
+  const scanFrom = Math.max(0, flatArray.length - 2500);
+  for (let i = scanFrom + 1; i < flatArray.length - 1; i++) {
+    const v = flatArray[i];
+    if (typeof v !== "number" || v <= results.length || v > 100_000) continue;
+    const prev = flatArray[i - 1];
+    const next = flatArray[i + 1];
+    if (prev === 5 && typeof next === "number" && next < -1000) {
+      totalCount = v;
+      break;
+    }
+  }
+
+  return { results, totalCount };
+}
+
 /**
  * A single search result extracted from a proposeCitables GWT-RPC response.
  */

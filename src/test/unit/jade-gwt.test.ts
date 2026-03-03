@@ -14,6 +14,7 @@ import {
   parseGwtRpcResponse,
   parseAvd2Response,
   parseGwtConcatResponse,
+  parseCitatorResponse,
   AVD2_STRONG_NAME,
   JADE_STRONG_NAME,
 } from "../../services/jade-gwt.js";
@@ -458,5 +459,60 @@ describe("parseGwtConcatResponse", () => {
     const { flatArray, stringTable } = parseGwtConcatResponse(resp);
     expect(flatArray).toEqual([]);
     expect(stringTable).toEqual([]);
+  });
+});
+
+describe("parseCitatorResponse", () => {
+  it("extracts citing cases from the Mabo citator fixture", () => {
+    const fixture = readFixture("citator-mabo.txt");
+    const { results } = parseCitatorResponse(fixture);
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.length).toBeLessThanOrEqual(30);
+  });
+
+  it("extracts neutral citations for citing cases", () => {
+    const fixture = readFixture("citator-mabo.txt");
+    const { results } = parseCitatorResponse(fixture);
+    const cits = results.map((r) => r.neutralCitation);
+    expect(cits).toContain("[2025] HCA 12");
+    expect(cits).toContain("[2025] HCA 32");
+  });
+
+  it("extracts Stuart v South Australia as the case name for [2025] HCA 12", () => {
+    const fixture = readFixture("citator-mabo.txt");
+    const { results } = parseCitatorResponse(fixture);
+    const stuart = results.find((r) => r.neutralCitation === "[2025] HCA 12");
+    expect(stuart).toBeDefined();
+    expect(stuart!.caseName).toContain("Stuart");
+  });
+
+  it("extracts article ID 1127773 for [2025] HCA 12", () => {
+    const fixture = readFixture("citator-mabo.txt");
+    const { results } = parseCitatorResponse(fixture);
+    const stuart = results.find((r) => r.neutralCitation === "[2025] HCA 12");
+    expect(stuart?.articleId).toBe(1127773);
+  });
+
+  it("sets direct jade.io URL when article ID is available", () => {
+    const fixture = readFixture("citator-mabo.txt");
+    const { results } = parseCitatorResponse(fixture);
+    const stuart = results.find((r) => r.neutralCitation === "[2025] HCA 12");
+    expect(stuart?.jadeUrl).toBe("https://jade.io/article/1127773");
+  });
+
+  it("returns totalCount reflecting the full result set", () => {
+    const fixture = readFixture("citator-mabo.txt");
+    const { totalCount } = parseCitatorResponse(fixture);
+    expect(totalCount).toBe(695);
+  });
+
+  it("throws on //EX exception response", () => {
+    expect(() => parseCitatorResponse("//EX error")).toThrow(/exception/i);
+  });
+
+  it("returns empty results for empty response", () => {
+    const { results, totalCount } = parseCitatorResponse("//OK[4,7]");
+    expect(results).toEqual([]);
+    expect(totalCount).toBe(0);
   });
 });
