@@ -93,7 +93,7 @@ export const JADE_PERMUTATION = "FEBDA911A95AD2DF02425A9C60379101";
  * and citation data retrieval. NOT used for freetext case search.
  * Discovered from HAR analysis (2026-03-03).
  */
-export const LEFTOVER_STRONG_NAME = "EF3980F48D304DEE936E425DA22C0A1D";
+export const LEFTOVER_STRONG_NAME = "CCB23EABE2EF1A4CA63F2E243C979468";
 
 /**
  * Encodes a non-negative integer using GWT's custom base-64 charset.

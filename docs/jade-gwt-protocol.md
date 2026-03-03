@@ -15,7 +15,7 @@ HAR sources:
 |---------|------------|---------|
 | JadeRemoteService | `B4F37C2BEC5AB097C4C8696FD843C56D` | proposeCitables, searchArticles, getInitialContent, getArticleStructuredMetadata, loadTranches |
 | ArticleViewRemoteService | `159521E79F7322FD92335ED73B4403F9` | avd2Request, getCitedPreview |
-| LeftoverRemoteService | `EF3980F48D304DEE936E425DA22C0A1D` | search (citation search: "who cites this article"), getCitableCitations |
+| LeftoverRemoteService | `CCB23EABE2EF1A4CA63F2E243C979468` | search (citation search: "who cites this article"), getCitableCitations |
 
 Constants are in `src/services/jade-gwt.ts`.
 
