@@ -30,3 +30,11 @@ docs/api
 
 # OS
 Thumbs.db
+
+# agentic artefacts
+plans/*
+plans
+CLAUDE.md
+AGENTS.md
+scratch/*
+scratch
