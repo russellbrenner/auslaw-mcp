@@ -276,7 +276,23 @@ function calculateAuthorityScore(result: SearchResult): number {
 - Strong name staleness: if requests return `//EX`, refresh `JADE_STRONG_NAME` from `X-GWT-Permutation` header
 - Transcripts (HCATrans) are filtered out; results without discoverable article IDs are skipped
 
-### Should Have (Future)
+### ✅ Phase 9: jade.io Citator via LeftoverRemoteService (COMPLETED)
+
+**Implemented features:**
+1. ✅ Reverse-engineered `LeftoverRemoteService.search` from HAR analysis — this is jade.io's "who cites this case?" endpoint
+2. ✅ `buildCitatorSearchRequest(citableId)` - GWT-RPC request builder for the citator
+3. ✅ `parseCitatorResponse(text)` - extracts citing case names, neutral + reported citations, jade article IDs, and total count from the GWT-RPC response
+4. ✅ `extractCitableIds(flatArray)` - extracts citable IDs (2M–10M range, different from article IDs) from a `proposeCitables` response — used to map a search result to its citator input
+5. ✅ `searchCitingCases(caseName)` in `src/services/jade.ts`:
+   - Step 1: calls `proposeCitables` to find the citable ID for the named case
+   - Step 2: calls `LeftoverRemoteService.search` with the citable ID
+   - Returns `{ results, totalCount }` — results include `caseName`, `neutralCitation`, `reportedCitation`, and `jadeUrl`
+6. ✅ `search_citing_cases` MCP tool registered in `src/index.ts`
+7. ✅ Graceful degradation: returns empty results when jade.io is unreachable or `JADE_SESSION_COOKIE` is unset
+
+**Authentication:** same `JADE_SESSION_COOKIE` as `fetch_document_text` and `search_cases`.
+
+
 1. 🔶 BarNet Jade integration
 2. 🔶 Related cases and legislation suggestions
 

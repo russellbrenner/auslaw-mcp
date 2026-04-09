@@ -339,6 +339,17 @@ Find a case by its citation. If a neutral citation is detected, validates agains
 | `citation` | Yes | Citation or case name, e.g. `[1992] HCA 23` or `Mabo v Queensland` |
 | `format` | No | `json` (default), `text`, `markdown`, `html` |
 
+### search_citing_cases
+Find cases that cite a given case on jade.io using the `LeftoverRemoteService` citator. Requires `JADE_SESSION_COOKIE`.
+
+**Parameters:**
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `caseName` | Yes | Case name or citation, e.g. `Mabo v Queensland (No 2)` or `[1992] HCA 23` |
+| `format` | No | `json` (default), `text`, `markdown`, `html` |
+
+**Returns:** `{ totalCount, results[] }` — each result has `caseName`, `neutralCitation`, `reportedCitation`, and `jadeUrl`.
+
 ### resolve_jade_article
 Resolve metadata for a jade.io article by its numeric ID.
 
@@ -388,7 +399,7 @@ Test scenarios include:
 
 ```
 src/
-├── index.ts              # MCP server & tool registration (9 tools)
+├── index.ts              # MCP server & tool registration (10 tools)
 ├── config.ts             # Configuration management
 ├── constants.ts          # Citation patterns, court codes, reporters
 ├── errors.ts             # Custom error classes

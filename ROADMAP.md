@@ -4,12 +4,17 @@
 
 | Tool | Source | Status |
 |------|--------|--------|
-| `search_cases` | AustLII | Working |
+| `search_cases` | AustLII + jade.io (parallel, deduplicated) | Working |
 | `search_legislation` | AustLII | Working |
 | `fetch_document_text` | AustLII (HTML, PDF) | Working |
+| `fetch_document_text` | jade.io (GWT-RPC `avd2Request`) | Working (requires `JADE_SESSION_COOKIE`) |
 | `resolve_jade_article` | jade.io (title metadata) | Working |
 | `jade_citation_lookup` | jade.io (URL construction) | Working |
-| `fetch_document_text` | jade.io | Not supported (see below) |
+| `format_citation` | AGLC4 formatter | Working |
+| `validate_citation` | AustLII HEAD check | Working |
+| `generate_pinpoint` | AustLII paragraph blocks | Working |
+| `search_by_citation` | AustLII citation lookup | Working |
+| `search_citing_cases` | jade.io `LeftoverRemoteService` citator | Working (requires `JADE_SESSION_COOKIE`) |
 
 ---
 
@@ -49,7 +54,7 @@ Tasks:
 - [x] Filter for XHR/Fetch requests and capture all calls after initial page load
 - [x] Identify endpoints that return judgment content
 - [x] Document URL patterns, authentication mechanism, and response schema
-- [ ] Inspect `jadeService.do` POST body and response for article content call (needs Proxyman)
+- [x] Inspect `jadeService.do` POST body and response for article content call (needs Proxyman)
 
 **Findings (2026-03-02):**
 
@@ -164,8 +169,8 @@ Option C (Chrome MCP bridge): Useful for investigation but too fragile for produ
       - When `JADE_SESSION_COOKIE` is set: call GWT-RPC API, return full HTML
       - When not set: throw with `JADE_SESSION_COOKIE` instructions
 - [x] Add integration tests in `src/test/jade.test.ts` (skipped in CI and without env var)
-- [ ] Update `.env.example` with cookie extraction instructions
-- [ ] Document the cookie refresh workflow in README
+- [x] Update `.env.example` with cookie extraction instructions
+- [x] Document the cookie refresh workflow in README
 
 ---
 
