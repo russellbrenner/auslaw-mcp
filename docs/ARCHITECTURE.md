@@ -1,342 +1,124 @@
-# auslaw-mcp Architecture & Operations Guide
+# auslaw-mcp Architecture Guide
 
 **Version:** 1.0  
 **Last Updated:** 2026-04-10  
-**Status:** Production
 
 ---
 
 ## Executive Summary
 
-auslaw-mcp is a Model Context Protocol (MCP) server for Australian and New Zealand legal research. It provides AI assistants with tools to search case law and legislation, retrieve full-text judgments, and format citations per AGLC4 rules.
+auslaw-mcp is a Model Context Protocol (MCP) server for Australian and New Zealand legal research.
 
-**Key Differentiators:**
-- Dual-source search (AustLII + jade.io) with intelligent deduplication
-- OCR-capable PDF extraction for scanned judgments
-- AGLC4 citation formatting and validation
-- jade.io GWT-RPC reverse-engineering (citator, authenticated fetch)
-- Paragraph-level pinpoint citation generation
+**Key Features:**
+- Dual-source search (AustLII + jade.io)
+- OCR-capable PDF extraction
+- AGLC4 citation formatting
+- jade.io citator integration
 
 ---
 
 ## System Architecture
 
-### High-Level Overview
-
-```d2
-direction: right
-
-subgraph mcp_clients: MCP Clients {
-  claude: "Claude Code\n(Claude Desktop, CLI)"
-  cursor: "Cursor IDE"
-  custom: "Custom MCP Hosts"
-}
-
-subgraph auslaw_mcp: auslaw-mcp Server {
-  index: "index.ts\n(MCP Server + 10 Tools)"
-  austlii_svc: "austlii.ts\n(AustLII Search)"
-  jade_svc: "jade.ts + jade-gwt.ts\n(jade.io GWT-RPC)"
-  fetcher: "fetcher.ts\n(HTML/PDF/OCR)"
-  citation: "citation.ts\n(AGLC4 Formatting)"
-}
-
-subgraph external: External Services {
-  austlii: "AustLII\nwww.austlii.edu.au"
-  jade: "jade.io\n(BarNet)"
-  isaacus: "Isaacus API\n(optional enrichment)"
-  litellm: "LiteLLM Gateway\n(optional fallback)"
-}
-
-subgraph storage: Storage {
-  vault: "Vault\n(Secrets)"
-  minio: "MinIO\n(Document Cache)"
-  postgres: "PostgreSQL\n(Citation Graph)"
-}
-
-claude --> index
-cursor --> index
-custom --> index
-
-index --> austlii_svc
-index --> jade_svc
-index --> fetcher
-index --> citation
-
-austlii_svc --> austlii
-jade_svc --> jade
-fetcher --> austlii
-fetcher --> jade
-
-index -.->|optional| isaacus
-index -.->|optional| litellm
-
-index --> vault
-index -.-> minio
-index -.-> postgres
+```
+┌─────────────────────────────────────────┐
+│ MCP Clients (Claude Code, Cursor, etc.) │
+└─────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────┐
+│ auslaw-mcp Server (10 Tools)            │
+│ ┌─────────────────────────────────────┐ │
+│ │ search_cases, search_legislation    │ │
+│ │ fetch_document_text, format_citation│ │
+│ │ validate_citation, generate_pinpoint│ │
+│ │ search_by_citation, search_citing_  │ │
+│ │ resolve_jade_article, jade_citation_│ │
+│ └─────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+        │           │           │
+        ▼           ▼           ▼
+   ┌────────┐  ┌────────┐  ┌──────────┐
+   │AustLII │  │ jade.io│  │Isaacus   │
+   │(free)  │  │(premium)│  │(optional)│
+   └────────┘  └────────┘  └──────────┘
 ```
 
 ---
 
-## Component Breakdown
+## Components
 
-### 1. MCP Server (src/index.ts)
+### 1. MCP Server
 
-**Responsibility:** Tool registration, input validation, response formatting
-
-**Tools Registered:**
-
+**Tools:**
 | Tool | Description |
 |------|-------------|
 | search_cases | Dual AustLII + jade.io case search |
 | search_legislation | AustLII legislation search |
 | fetch_document_text | Full-text retrieval (HTML/PDF/OCR) |
-| resolve_jade_article | jade.io article metadata by ID |
-| jade_citation_lookup | Generate jade.io lookup URLs |
 | format_citation | AGLC4 citation formatting |
 | validate_citation | Validate neutral citations |
 | generate_pinpoint | Paragraph-level pinpoint citations |
 | search_by_citation | Find cases by citation |
-| search_citing_cases | jade.io citator ("who cites this") |
+| resolve_jade_article | jade.io article metadata by ID |
+| jade_citation_lookup | Generate jade.io lookup URLs |
+| search_citing_cases | jade.io citator |
 
-**Key Design Decisions:**
-- **Transport abstraction:** Supports stdio (local MCP) and HTTP (k8s deployment)
-- **Schema validation:** Zod schemas enforce strict input validation
-- **Format flexibility:** JSON, text, markdown, HTML output per tool
+### 2. AustLII Service
 
----
-
-### 2. AustLII Service (src/services/austlii.ts)
-
-**Responsibility:** Search AustLII SinoSearch CGI API
-
-**Implementation Pattern:**
-```typescript
-searchAustLii(query, { type, jurisdiction, limit, sortBy, method, offset })
-```
-
-**Key Features:**
+- Searches AustLII SinoSearch CGI API
 - Authority-based ranking (HCA > FCAFC > FCA > state courts)
-- Method-based search (title, phrase, boolean, proximity)
-- Snippet extraction with paragraph markers
-- Rate limiting (10 req/min via token bucket)
+- Rate limiting: 10 req/min
+
+### 3. jade.io Service
+
+- GWT-RPC reverse-engineering
+- Protocols: proposeCitables (search), avd2Request (fetch), LeftoverRemoteService (citator)
+- Rate limiting: 5 req/min
+
+### 4. Document Fetcher
+
+- HTML: Cheerio parse
+- PDF: pdf-parse + Tesseract OCR fallback
+- Extracts paragraphs for pinpoint citations
+
+### 5. Citation Service
+
+- AGLC4 formatting
+- Validates against AustLII
+- Generates pinpoint citations
 
 ---
 
-### 3. jade.io Service (src/services/jade.ts, jade-gwt.ts)
+## Deployment
 
-**Responsibility:** jade.io integration via reverse-engineered GWT-RPC
+### Local Development
 
-**Key Protocols:**
-
-| Protocol | Purpose | Implementation |
-|----------|---------|----------------|
-| proposeCitables | Search/autocomplete | JadeRemoteService |
-| avd2Request | Fetch article content | ArticleViewRemoteService |
-| LeftoverRemoteService | Citation search | Citator tool |
-
-**GWT-RPC Payload Structure:**
-```
-[strong_name],[method],[params...],[permutation_hash]
+```bash
+git clone https://github.com/russellbrenner/auslaw-mcp.git
+cd auslaw-mcp
+npm install
+npm run dev
 ```
 
-**Bridge Section Resolution:**
-- jade.io returns a flat array; the last ~10% contains article ID mappings
-- Resolution via resolveArticle(articleId) to public GET /article/{id}
+### Docker
 
-**Strong Names (2026-03-03):**
-```typescript
-JADE_STRONG_NAME = "B4F37C2BEC5AB097C4C8696FD843C56D"
-AVD2_STRONG_NAME = "159521E79F7322FD92335ED73B4403F9"
-LEFTOVER_STRONG_NAME = "EF3980F48D304DEE936E425DA22C0A1D"
-JADE_PERMUTATION = "FEBDA911A95AD2DF02425A9C60379101"
+```bash
+docker build -t auslaw-mcp .
+docker run --rm -it auslaw-mcp
 ```
 
-**Update Workflow:**
-1. Capture HAR via Proxyman (proxyman-cli export-log --domains jade.io)
-2. Extract strong name from jadeService.do request body (field 4)
-3. Update jade-gwt.ts constants
-4. Document in docs/jade-gwt-protocol.md
+### HTTP Transport
 
----
+For remote deployment, set `MCP_TRANSPORT=http`:
 
-### 4. Document Fetcher (src/services/fetcher.ts)
-
-**Responsibility:** Retrieve and extract text from HTML/PDF documents
-
-**Extraction Pipeline:**
-1. HTML: Cheerio parse, extract text + paragraphs
-2. PDF (text-enabled): pdf-parse for embedded text
-3. PDF (scanned): Tesseract OCR fallback
-
-**Fallback Strategy:**
-1. Try PDF text extraction (fast)
-2. If <100 chars, retry with Tesseract OCR (slow but accurate)
-
----
-
-### 5. Citation Service (src/services/citation.ts)
-
-**Responsibility:** AGLC4 citation formatting, validation, pinpoint generation
-
-**Functions:**
-| Function | Purpose |
-|----------|---------|
-| formatAGLC4(info) | Format citation per AGLC4 rules |
-| validateCitation(citation) | Verify against AustLII |
-| parseCitation(citation) | Extract components from string |
-| generatePinpoint(paragraphs, opts) | Generate [at N] pinpoint |
-
-**AGLC4 Output Examples:**
-- Neutral only: Mabo v Queensland (No 2) [1992] HCA 23
-- Reported only: Mabo v Queensland (No 2) (1992) 175 CLR 1
-- Combined: Mabo v Queensland (No 2) [1992] HCA 23, (1992) 175 CLR 1
-- Pinpoint: Mabo v Queensland (No 2) [1992] HCA 23, (1992) 175 CLR 1 at [64]
-
----
-
-## Deployment Architecture
-
-### Production Deployment (k3s + ArgoCD)
-
-```d2
-direction: right
-
-subgraph git: Git Repositories {
-  github: "GitHub (russellbrenner/auslaw-mcp)"
-  gitea: "Gitea (git.itsa.house/rbrenner/auslaw-mcp)"
-}
-
-subgraph ci: CI/CD {
-  gitea_actions: "Gitea Actions (Build + Push Image)"
-}
-
-subgraph k8s: Kubernetes Cluster {
-  subgraph argocd: ArgoCD {
-    app: "Application (auslaw-mcp)"
-  }
-
-  subgraph auslaw_mcp_ns: auslaw-mcp Namespace {
-    deploy: "Deployment (2 replicas)"
-    svc: "Service"
-    ingress: "Ingress (auslaw-mcp.itsa.house)"
-    vault: "Vault Static Secret (JADE_SESSION_COOKIE)"
-  }
-}
-
-subgraph external: External {
-  registry: "Gitea Registry (git.itsa.house/homelab/auslaw-mcp)"
-  vault_svc: "Vault (secret.itsa.house)"
-  austlii: "AustLII"
-  jade: "jade.io"
-}
-
-github -->|mirror| gitea
-gitea -->|push main| gitea_actions
-gitea_actions -->|push| registry
-argocd -->|watch| gitea
-app -->|sync| k8s
-deploy -->|pull| registry
-deploy -->|fetch| vault_svc
-deploy --> austlii
-deploy --> jade
+```bash
+MCP_TRANSPORT=http npm start
+# Listens on port 3000
 ```
-
----
-
-## CI/CD Pipeline
-
-### Gitea Actions Workflow (.gitea/workflows/build.yml)
-
-**Trigger:** Push to main branch (src/, package.json, Dockerfile changes)
-
-**Steps:**
-1. Checkout — Clone repo with deploy token
-2. Registry Login — Buildah login to git.itsa.house
-3. Build Image — Tag as :latest + :<sha>
-4. Push — Push to Gitea registry
-5. Notify — Mattermost webhook with status
-
-**Image Tags:**
-- git.itsa.house/rbrenner/auslaw-mcp:latest — Rolling latest
-- git.itsa.house/rbrenner/auslaw-mcp:<sha> — Commit-specific
-
----
-
-## Git Repository Strategy
-
-### Mirror Configuration
-
-| Repository | Purpose | Sync Method |
-|------------|---------|-------------|
-| github.com/russellbrenner/auslaw-mcp | Public open-source | Manual push |
-| git.itsa.house/rbrenner/auslaw-mcp | Internal mirror (CI source) | Cortex CronJob sync |
-
-**Cortex CronJob (k8s/cortex/cronjob-repo-sync.yaml):**
-- Schedule: Every 6 hours at :17
-- Syncs 15 repos including rbrenner/auslaw-mcp
-- Uses Gitea PAT for authentication
-- Resets to origin/HEAD after fetch
-
-**Flow:**
-```
-Developer → GitHub push → Cortex sync (6h) → Gitea mirror → Gitea Actions CI
-```
-
-**Why This Pattern?**
-- GitHub for public open-source collaboration
-- Gitea for internal CI/CD and registry
-- Automated sync avoids manual mirroring
-
----
-
-## Production Usage Patterns
-
-### Recommended Architecture for Scale
-
-**Pattern: MCP Server + Inference Layer Separation**
-
-```d2
-direction: down
-
-subgraph client: AI Client {
-  claude: "Claude Code with auslaw-mcp"
-}
-
-subgraph mcp: auslaw-mcp (Stateless) {
-  mcp_tools: "10 MCP Tools (search, fetch, format)"
-  isaacus_sdk: "isaacus SDK (optional, user API key)"
-}
-
-subgraph backend: Backend Services {
-  alis: "ALIS (alis.itsa.house) — Isaacus inference layer"
-  rag: "rag-api (rag.itsa.house) — pgvector + caching"
-}
-
-subgraph storage: Storage {
-  minio: "MinIO (document cache)"
-  postgres: "PostgreSQL (citation_graphs)"
-  redis: "Redis (query cache)"
-}
-
-claude --> mcp_tools
-mcp_tools --> isaacus_sdk
-mcp_tools --> alis
-mcp_tools --> rag
-alis --> storage
-rag --> storage
-```
-
-**Key Design Principles:**
-1. **auslaw-mcp is stateless** — No persistent storage, scales horizontally
-2. **Inference is optional** — Works without Isaacus; enrichment is opt-in
-3. **Backend services are separate** — ALIS for inference, rag-api for retrieval
-4. **User-provided API keys** — ISAACUS_API_KEY, LITELLM_API_KEY from user
 
 ---
 
 ## Configuration
-
-### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -346,132 +128,34 @@ rag --> storage
 | JADE_SESSION_COOKIE | — | jade.io auth cookie |
 | MCP_TRANSPORT | stdio | stdio or http |
 | ISAACUS_API_KEY | — | Isaacus API key (optional) |
-| LITELLM_BASE_URL | — | LiteLLM gateway (optional) |
-
-### Kubernetes Configuration
-
-**ConfigMap:** Non-sensitive config (AustLII URLs, OCR settings)  
-**Vault Static Secret:** JADE_SESSION_COOKIE, ISAACUS_API_KEY  
-**Replicas:** 2 (auto-scaled)  
-**Resources:** 128Mi–512Mi RAM, 100m–500m CPU
 
 ---
 
-## Testing Strategy
+## Testing
 
-**Test Categories:**
-
-| Type | Location | Network | Coverage |
-|------|----------|---------|----------|
-| Unit | src/test/unit/ | None | 163 test cases |
-| Integration | src/test/scenarios.test.ts | Live | 5 real-world scenarios |
-| Performance | src/test/performance/ | Live | Latency benchmarks |
-| Fixtures | src/test/fixtures/ | None | GWT-RPC responses |
-
-**Run Commands:**
 ```bash
 npm test                        # All tests
-npx vitest run src/test/unit/   # Unit only (fast)
+npx vitest run src/test/unit/   # Unit only (fast, no network)
 ```
 
 ---
 
-## jade.io Search Quality
+## Security
 
-### With vs. Without jade.io Integration
-
-**Without jade.io (AustLII only):**
-- Single-source results
-- No citation graph ("who cites this")
-- No authenticated premium content
-- Simpler deployment (no cookie management)
-
-**With jade.io (dual-source):**
-- Merged results with deduplication by neutral citation
-- Citator tool access
-- Premium judgment access (subscription required)
-- Richer metadata (judges, court, date)
-
-**Quality Difference:**
-
-| Metric | AustLII Only | AustLII + jade.io |
-|--------|--------------|-------------------|
-| Result count | ~50/search | ~70/search (merged) |
-| Citation richness | Basic | Enhanced (judges, history) |
-| Premium content | No | Yes (if subscribed) |
-| Citator | No | Yes (20–30 citing cases) |
-
-**Recommendation:** Enable jade.io for production use; the citator tool alone justifies the integration complexity.
+- **SSRF Protection:** URL allowlist (AustLII, jade.io only)
+- **Rate Limiting:** Token bucket per source
+- **Secrets:** Never commit cookies or API keys
 
 ---
 
-## Future Enhancements (Roadmap)
+## See Also
 
-### P1 — Core Differentiation
-- enrich_judgment — ILGS extraction via isaacus SDK
-- answer_question — Extractive QA with confidence scores
-- build_citation_graph — Citation network extraction
-
-### P2 — Quality of Life
-- classify_legal_document — Zero-shot classification
-- rerank_search_results — Semantic reranking
-
-### P3 — Advanced
-- smart_search — Query rewriting + multi-source aggregation
-- extract_entities — NER for case names, legislation refs
+- [README.md](../README.md) — Quick start, tool catalog
+- [AGENT-GUIDE.md](./AGENT-GUIDE.md) — Agent usage guide
+- [DOCKER.md](./DOCKER.md) — Docker deployment
+- [ROADMAP.md](./ROADMAP.md) — Development history
+- [jade-gwt-protocol.md](./jade-gwt-protocol.md) — GWT-RPC details
 
 ---
 
-## Security Considerations
-
-### SSRF Protection
-- URL allowlist: Only AustLII and jade.io domains permitted
-- HTTPS-only enforcement
-- No redirects to external domains
-
-### Rate Limiting
-- AustLII: 10 req/min (token bucket)
-- jade.io: 5 req/min (token bucket)
-- Configurable via environment variables
-
-### Secret Management
-- JADE_SESSION_COOKIE via Vault (not ConfigMap)
-- Rotated periodically (browser capture workflow)
-- Never committed to git
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-| Symptom | Likely Cause | Resolution |
-|---------|--------------|------------|
-| jade.io fetch fails | Expired session cookie | Recapture from browser DevTools |
-| OCR returns empty | Tesseract not installed | Install tesseract-ocr package |
-| Search timeout | AustLII rate limiting | Increase timeout or add delay |
-| Strong name mismatch | jade.io redeployed | Update from HAR capture |
-
-### jade.io Cookie Refresh Workflow
-
-1. Open Chrome DevTools (F12) → Network tab
-2. Navigate to any jade.io article
-3. Copy Cookie header from request
-4. Update Vault secret: vault write secret/kv/auslaw-mcp JADE_SESSION_COOKIE="..."
-5. Restart deployment: kubectl rollout restart deployment/auslaw-mcp -n auslaw-mcp
-
----
-
-## References
-
-- README.md — User-facing documentation
-- DOCKER.md — Docker deployment guide
-- ROADMAP.md — Development history and future plans
-- jade-gwt-protocol.md — GWT-RPC reverse-engineering details
-- k8s/README.md — Kubernetes deployment guide
-
----
-
-**License:** MIT  
-**Maintainer:** Russell Brenner  
-**Contact:** russellbrenner@users.noreply.github.com
+**License:** MIT
