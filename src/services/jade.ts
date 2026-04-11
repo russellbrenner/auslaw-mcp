@@ -350,9 +350,7 @@ async function resolveBridgeCandidates(flatArray: unknown[]): Promise<Map<string
   if (candidates.length === 0) return new Map();
 
   // Resolve high-confidence candidates first
-  const settled = await Promise.allSettled(
-    candidates.map((c) => resolveArticle(c.articleId)),
-  );
+  const settled = await Promise.allSettled(candidates.map((c) => resolveArticle(c.articleId)));
 
   const citationToId = new Map<string, number>();
   for (let i = 0; i < settled.length; i++) {
@@ -425,9 +423,7 @@ export async function searchJade(query: string, options: SearchOptions): Promise
 
       // Use resolved article ID if available, otherwise fall back to citation search URL
       const resolvedId = articleIdMap.get(normaliseCitation(item.neutralCitation));
-      const url = resolvedId
-        ? `https://jade.io/article/${resolvedId}`
-        : item.jadeUrl;
+      const url = resolvedId ? `https://jade.io/article/${resolvedId}` : item.jadeUrl;
 
       return {
         title: item.caseName,
@@ -457,7 +453,10 @@ export async function searchJade(query: string, options: SearchOptions): Promise
         `jade.io proposeCitables search failed${status ? ` (HTTP ${status})` : ""} — returning empty results`,
       );
     } else {
-      console.warn("jade.io search failed:", error instanceof Error ? error.message : String(error));
+      console.warn(
+        "jade.io search failed:",
+        error instanceof Error ? error.message : String(error),
+      );
     }
     return [];
   }

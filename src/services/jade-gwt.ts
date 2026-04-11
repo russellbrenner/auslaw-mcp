@@ -266,16 +266,15 @@ export function buildAvd2Request(articleId: number): string {
  * @returns flatArray (all elements before the trailing [string_table, typeCount, magic])
  *          and stringTable (the nested array third-from-last in the combined result)
  */
-export function parseGwtConcatResponse(
-  responseText: string,
-): { flatArray: unknown[]; stringTable: string[] } {
+export function parseGwtConcatResponse(responseText: string): {
+  flatArray: unknown[];
+  stringTable: string[];
+} {
   if (responseText.startsWith("//EX")) {
     throw new Error("jade.io GWT-RPC server returned an exception response");
   }
   if (!responseText.startsWith("//OK")) {
-    throw new Error(
-      `Unexpected GWT-RPC response format: ${responseText.substring(0, 50)}`,
-    );
+    throw new Error(`Unexpected GWT-RPC response format: ${responseText.substring(0, 50)}`);
   }
 
   const stripped = responseText.slice(4);
@@ -478,9 +477,10 @@ export interface CitingCase {
  * @param responseText - Raw GWT-RPC response (may use .concat() format)
  * @returns { results, totalCount }
  */
-export function parseCitatorResponse(
-  responseText: string,
-): { results: CitingCase[]; totalCount: number } {
+export function parseCitatorResponse(responseText: string): {
+  results: CitingCase[];
+  totalCount: number;
+} {
   const { flatArray, stringTable } = parseGwtConcatResponse(responseText);
 
   if (flatArray.length === 0 || stringTable.length === 0) {
@@ -638,9 +638,10 @@ export interface ProposeCitablesResult {
  * @returns Object with `results` array and the raw `flatArray` for bridge section extraction
  * @throws Error if the response is a GWT exception (//EX) or has an unexpected prefix
  */
-export function parseProposeCitablesResponse(
-  responseText: string,
-): { results: ProposeCitablesResult[]; flatArray: unknown[] } {
+export function parseProposeCitablesResponse(responseText: string): {
+  results: ProposeCitablesResult[];
+  flatArray: unknown[];
+} {
   if (responseText.startsWith("//EX")) {
     throw new Error("jade.io GWT-RPC server returned an exception response");
   }
@@ -752,9 +753,7 @@ export function parseProposeCitablesResponse(
     let articleId: number | undefined;
 
     for (const flatPos of flatPositions) {
-      const gwtCandidate = hasSemicolon
-        ? flatArray[flatPos - 3]
-        : flatArray[flatPos + 4];
+      const gwtCandidate = hasSemicolon ? flatArray[flatPos - 3] : flatArray[flatPos + 4];
 
       if (isGwtEncoded(gwtCandidate)) {
         articleId = decodeGwtInt(gwtCandidate);

@@ -409,9 +409,7 @@ describe("parseGwtRpcResponse", () => {
   });
 
   it("throws on //EX server exception response", () => {
-    expect(() => parseGwtRpcResponse('//EX[{"type":"exception"}]')).toThrow(
-      /server.*exception/i,
-    );
+    expect(() => parseGwtRpcResponse('//EX[{"type":"exception"}]')).toThrow(/server.*exception/i);
   });
 
   it("throws on unexpected format (no //OK prefix)", () => {
@@ -443,9 +441,9 @@ describe("parseGwtConcatResponse", () => {
     const { flatArray, stringTable } = parseGwtConcatResponse(fixture);
     expect(flatArray.length).toBeGreaterThan(40000);
     expect(stringTable.length).toBeGreaterThan(1000);
-    expect(stringTable.some(s =>
-      typeof s === "string" && s.includes("CitableSearchResults")
-    )).toBe(true);
+    expect(
+      stringTable.some((s) => typeof s === "string" && s.includes("CitableSearchResults")),
+    ).toBe(true);
   });
 
   it("throws on //EX exception response", () => {

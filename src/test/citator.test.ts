@@ -2,8 +2,7 @@ import { describe, it, expect } from "vitest";
 import { searchCitingCases } from "../services/jade.js";
 
 // Authenticated citator tests -- require JADE_SESSION_COOKIE env var
-const describeAuth =
-  process.env.CI || !process.env.JADE_SESSION_COOKIE ? describe.skip : describe;
+const describeAuth = process.env.CI || !process.env.JADE_SESSION_COOKIE ? describe.skip : describe;
 
 /**
  * Live citator integration tests
@@ -106,8 +105,7 @@ describeAuth("citation chain discovery (authenticated, live)", () => {
       const yearMatch = r.neutralCitation.match(/^\[(\d{4})\]/);
       return r.neutralCitation.includes("HCA") && yearMatch && parseInt(yearMatch[1]!) < 2024;
     });
-    const level1Target =
-      olderHcaCases.length > 0 ? olderHcaCases[0]! : level0.results[0]!;
+    const level1Target = olderHcaCases.length > 0 ? olderHcaCases[0]! : level0.results[0]!;
 
     // Use caseName + neutralCitation for more precise proposeCitables matching
     const level1Query = `${level1Target.caseName} ${level1Target.neutralCitation}`;
