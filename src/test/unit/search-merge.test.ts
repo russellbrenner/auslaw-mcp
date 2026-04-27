@@ -71,9 +71,29 @@ describe("mergeCaseSearchResults", () => {
     expect(merged[0]?.url).toContain("/NSWSC/2024/1.html");
   });
 
+  it("applies limit for paged user flows and retains jade-first ordering", () => {
+    const austliiResults = [
+      makeAustlii({ neutralCitation: "[2024] HCA 1", title: "Case A [2024] HCA 1" }),
+      makeAustlii({
+        neutralCitation: "[2024] HCA 2",
+        title: "Case B [2024] HCA 2",
+        url: "https://www.austlii.edu.au/cgi-bin/viewdoc/au/cases/cth/HCA/2024/2.html",
+      }),
+    ];
+    const jadeResults = [
+      makeJade({
+        neutralCitation: "[2024] HCA 3",
+        title: "Case C [2024] HCA 3",
+        url: "https://jade.io/article/123456",
+      }),
+    ];
+
     const merged = mergeCaseSearchResults(austliiResults, jadeResults, 2);
     expect(merged).toHaveLength(2);
     // jade result should occupy the first slot (jade is preferred / iterated first)
     expect(merged[0]?.source).toBe("jade");
     expect(merged[0]?.neutralCitation).toBe("[2024] HCA 3");
+    expect(merged[1]?.source).toBe("austlii");
+    expect(merged[1]?.neutralCitation).toBe("[2024] HCA 1");
+  });
 });
