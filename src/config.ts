@@ -99,7 +99,7 @@ export function loadConfig(): Config {
     citedBy: {
       enabled: process.env.AUSLAW_CACHE_CITED_BY !== "false",
       downloadSources: process.env.AUSLAW_DOWNLOAD_CITED_BY_SOURCES !== "false",
-      downloadLimit: parseInt(process.env.AUSLAW_CITED_BY_DOWNLOAD_LIMIT ?? "5", 10),
+      downloadLimit: parseInt(process.env.AUSLAW_CITED_BY_DOWNLOAD_LIMIT ?? "5", 10) || 5,
     },
   };
 }

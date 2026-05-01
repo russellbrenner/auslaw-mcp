@@ -349,12 +349,13 @@ export async function updateCitedBy(
   citeKey: string,
   refs: CitedByRef[],
   totalCount: number,
+  fetchedAt?: string,
 ): Promise<void> {
   const cache = await loadCache(cacheDir);
   const entry = cache.entries.find((e) => e.citeKey === citeKey);
   if (!entry) return;
   entry.citedBy = refs;
-  entry.citedByFetchedAt = new Date().toISOString();
+  entry.citedByFetchedAt = fetchedAt ?? new Date().toISOString();
   entry.citedByTotalCount = totalCount;
   entry.updatedAt = new Date().toISOString();
   await saveCache(cacheDir, cache);

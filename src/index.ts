@@ -961,6 +961,14 @@ function createMcpServer(): McpServer {
       const query = parent.neutralCitation ?? parent.title;
       const { results, totalCount } = await searchCitingCases(query);
 
+      // Snapshot prior source fields so conditional GET (ETag/Last-Modified)
+      // works correctly when cache_cited_by is called a second time.
+      const priorSources = new Map(
+        (parent.citedBy ?? [])
+          .filter((r) => r.neutralCitation)
+          .map((r) => [r.neutralCitation!, r] as const),
+      );
+
       // Build CitedByRef entries — prefer AustLII URL where derivable
       const refs: CitedByRef[] = results.map((r) => {
         const derivedUrl = r.neutralCitation ? austliiUrlFromNeutral(r.neutralCitation) : undefined;
@@ -979,7 +987,8 @@ function createMcpServer(): McpServer {
         };
       });
 
-      await updateCitedBy(config.cache.dir, citeKey, refs, totalCount);
+      const now = new Date().toISOString();
+      await updateCitedBy(config.cache.dir, citeKey, refs, totalCount, now);
 
       // Optionally download sources for the top-N refs
       let sourcesDownloaded = 0;
@@ -989,11 +998,12 @@ function createMcpServer(): McpServer {
           if (!ref.url || !ref.neutralCitation) continue;
           try {
             const fileKey = citedBySourceKey(citeKey, ref.neutralCitation);
-            const storeResult = await storeSource(fileKey, ref.url, null, config.sources.dir);
+            const prior = priorSources.get(ref.neutralCitation) ?? null;
+            const storeResult = await storeSource(fileKey, ref.url, prior, config.sources.dir);
             const relPath = path.relative(config.cache.dir, storeResult.path);
             await updateCitedBySource(config.cache.dir, citeKey, ref.neutralCitation, {
               sourceFile: relPath,
-              sourceFetchedAt: new Date().toISOString(),
+              sourceFetchedAt: now,
               contentHash: storeResult.contentHash,
               sourceEtag: storeResult.etag,
               sourceLastModified: storeResult.lastModified,
@@ -1015,7 +1025,7 @@ function createMcpServer(): McpServer {
                 totalCount,
                 cached: refs.length,
                 sourcesDownloaded,
-                citedByFetchedAt: new Date().toISOString(),
+                citedByFetchedAt: now,
               },
               null,
               2,
@@ -1032,7 +1042,7 @@ function createMcpServer(): McpServer {
       .string()
       .min(1)
       .describe("Cite key of the case to retrieve cached cited-by data for"),
-    format: formatEnum.optional(),
+    format: z.enum(["json", "markdown"]).default("json").optional(),
   };
   const getCitedByParser = z.object(getCitedByShape);
 
