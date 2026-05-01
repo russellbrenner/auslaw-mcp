@@ -957,9 +957,41 @@ function createMcpServer(): McpServer {
         };
       }
 
+      if (!config.jade.sessionCookie) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({
+                error: "JADE_SESSION_COOKIE is required to fetch cited-by data",
+              }),
+            },
+          ],
+        };
+      }
+
       // Search jade.io for cases that cite this one
       const query = parent.neutralCitation ?? parent.title;
       const { results, totalCount } = await searchCitingCases(query);
+
+      // Guard: if the API returns nothing but we have prior data, treat this as
+      // a likely failure (bad/expired cookie, network error) rather than a
+      // genuine empty set — preserving existing cache instead of erasing it.
+      if (results.length === 0 && totalCount === 0 && (parent.citedBy?.length ?? 0) > 0) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({
+                error:
+                  "jade.io returned no results but existing cited-by data is present. " +
+                  "The session cookie may be expired. Existing cache preserved.",
+                existingCount: parent.citedBy!.length,
+              }),
+            },
+          ],
+        };
+      }
 
       // Snapshot prior source fields so conditional GET (ETag/Last-Modified)
       // works correctly when cache_cited_by is called a second time.
