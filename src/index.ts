@@ -31,6 +31,7 @@ import {
 } from "./services/citation-cache.js";
 import { storeSource, checkSourceFreshness } from "./services/source-store.js";
 import { config } from "./config.js";
+import { AUSLAW_CACHE_DIR_NAME } from "./constants.js";
 
 const formatEnum = z.enum(["json", "text", "markdown", "html"]).default("json");
 const jurisdictionEnum = z.enum([
@@ -157,7 +158,7 @@ function createMcpServer(): McpServer {
     {
       title: "Fetch Document Text",
       description:
-        "Fetch full text for a legislation or case URL (AustLII or jade.io), with OCR fallback for scanned PDFs. When AUSLAW_FETCH_SOURCES is not set to 'false', saves a local markdown copy to the sources directory and tracks HTTP cache headers for future freshness checks.",
+        "Fetch full text for a legislation or case URL (AustLII or jade.io), with OCR fallback for scanned PDFs. When a `citeKey` is supplied and AUSLAW_FETCH_SOURCES is not set to 'false', also saves a local markdown copy to the sources directory and updates the cache entry's HTTP freshness headers. Without `citeKey`, only the document text is returned.",
       inputSchema: fetchDocumentShape,
     },
     async (rawInput) => {
@@ -647,14 +648,27 @@ function createMcpServer(): McpServer {
       const { document, outputPath } = exportBibliographyParser.parse(rawInput);
       const bibText = await exportBib(config.cache.dir, document);
 
-      const defaultPath = path.join(config.cache.dir, ".auslaw", `${config.cache.projectName}.bib`);
+      if (!bibText) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({ path: null, entries: 0, bib: "" }, null, 2),
+            },
+          ],
+        };
+      }
+
+      const defaultPath = path.join(
+        config.cache.dir,
+        AUSLAW_CACHE_DIR_NAME,
+        `${config.cache.projectName}.bib`,
+      );
       const writePath = outputPath ?? defaultPath;
 
-      if (bibText) {
-        const { promises: fs } = await import("node:fs");
-        await fs.mkdir(path.dirname(writePath), { recursive: true });
-        await fs.writeFile(writePath, bibText, "utf-8");
-      }
+      const { promises: fs } = await import("node:fs");
+      await fs.mkdir(path.dirname(writePath), { recursive: true });
+      await fs.writeFile(writePath, bibText, "utf-8");
 
       return {
         content: [

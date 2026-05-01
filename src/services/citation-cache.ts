@@ -104,7 +104,15 @@ export async function loadCache(cacheDir: string): Promise<CitationCache> {
   const cachePath = getCachePath(cacheDir);
   try {
     const raw = await fs.readFile(cachePath, "utf-8");
-    return JSON.parse(raw) as CitationCache;
+    const parsed = JSON.parse(raw) as CitationCache;
+    if (parsed.version !== undefined && parsed.version > AUSLAW_CACHE_VERSION) {
+      console.warn(
+        `auslaw-mcp: citation cache at ${cachePath} was written by a newer version ` +
+          `(schema v${parsed.version}, current v${AUSLAW_CACHE_VERSION}). ` +
+          `Some fields may be ignored. Update auslaw-mcp to avoid data loss.`,
+      );
+    }
+    return parsed;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       return {
@@ -185,6 +193,11 @@ function formatBibEntry(entry: CachedCitation): string {
  * Add or update a citation entry.
  * Matches on neutralCitation, aglc4Full, or url — whichever is present.
  * Returns the citeKey assigned to the entry.
+ *
+ * Note: uses a load-mutate-save pattern with no file lock. Concurrent calls
+ * from the same process (e.g. parallel MCP tool invocations under HTTP
+ * transport) can silently lose each other's writes. Safe for the default
+ * single-client stdio transport.
  */
 export async function upsertCitation(cacheDir: string, input: UpsertInput): Promise<string> {
   const cache = await loadCache(cacheDir);
@@ -295,6 +308,9 @@ export async function exportBib(cacheDir: string, document?: string): Promise<st
 /**
  * Update source-related fields on an existing cache entry.
  * Used by the source-store after a successful fetch.
+ *
+ * Note: same load-mutate-save limitation as upsertCitation — not safe for
+ * concurrent writes.
  */
 export async function updateSourceFields(
   cacheDir: string,
