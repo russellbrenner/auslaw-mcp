@@ -65,7 +65,7 @@ describe("buildGetInitialContentRequest", () => {
   it("produces the exact known POST body for article 67401", () => {
     // Captured verbatim from Proxyman HAR export (jade.io_03-02-2026-13-48-33.har)
     const expected =
-      "7|0|7|https://jade.io/au.com.barnet.jade.JadeClient/|B4F37C2BEC5AB097C4C8696FD843C56D|" +
+      "7|0|7|https://jade.io/au.com.barnet.jade.JadeClient/|78A4E1BF92432B956B45BFCCAAD8EA7F|" +
       "au.com.barnet.jade.cs.remote.JadeRemoteService|getInitialContent|" +
       "au.com.barnet.jade.cs.persistent.Jrl/728826604|au.com.barnet.jade.cs.persistent.Article|" +
       "java.util.ArrayList/4159755760|1|2|3|4|1|5|5|QdJ|A|0|A|A|6|0|";
@@ -88,7 +88,7 @@ describe("buildGetMetadataRequest", () => {
   it("produces the exact known POST body for article 67401", () => {
     // Captured verbatim from Proxyman HAR export
     const expected =
-      "7|0|5|https://jade.io/au.com.barnet.jade.JadeClient/|B4F37C2BEC5AB097C4C8696FD843C56D|" +
+      "7|0|5|https://jade.io/au.com.barnet.jade.JadeClient/|78A4E1BF92432B956B45BFCCAAD8EA7F|" +
       "au.com.barnet.jade.cs.remote.JadeRemoteService|getArticleStructuredMetadata|J|" +
       "1|2|3|4|1|5|QdJ|";
     expect(buildGetMetadataRequest(67401)).toBe(expected);
@@ -107,15 +107,15 @@ describe("buildAvd2Request", () => {
     // Article: AA v The Trustees of the Roman Catholic Church... [2026] HCA 2
     const expected =
       "7|0|10|https://jade.io/au.com.barnet.jade.JadeClient/|" +
-      "159521E79F7322FD92335ED73B4403F9|" +
+      "540FEEFE1755510EEA65022BF9AEE249|" +
       "au.com.barnet.jade.cs.remote.ArticleViewRemoteService|avd2Request|" +
-      "au.com.barnet.jade.cs.csobjects.avd.Avd2Request/2068227305|" +
+      "au.com.barnet.jade.cs.csobjects.avd.Avd2Request/2858816011|" +
       "au.com.barnet.jade.cs.persistent.Jrl/728826604|" +
       "au.com.barnet.jade.cs.persistent.Article|" +
       "java.util.ArrayList/4159755760|" +
       "au.com.barnet.jade.cs.csobjects.avd.PhraseFrequencyParams/1915696367|" +
       "cc.alcina.framework.common.client.util.IntPair/1982199244|" +
-      "1|2|3|4|1|5|5|A|A|0|6|EgmX|A|0|A|A|7|0|0|0|8|0|0|9|0|10|3|500|A|8|0|";
+      "1|2|3|4|1|5|5|A|A|0|6|EgmX|A|0|A|A|7|0|0|0|8|0|0|9|0|10|3|500|A|8|0|8|0|";
     expect(buildAvd2Request(1182103)).toBe(expected);
   });
 
@@ -227,7 +227,7 @@ describe("buildProposeCitablesRequest", () => {
     // Captured verbatim from jade.io_03-03-2026-10-08-59.har, entry 11
     const expected =
       "7|0|10|https://jade.io/au.com.barnet.jade.JadeClient/|" +
-      "B4F37C2BEC5AB097C4C8696FD843C56D|" +
+      "78A4E1BF92432B956B45BFCCAAD8EA7F|" +
       "au.com.barnet.jade.cs.remote.JadeRemoteService|proposeCitables|" +
       "java.lang.String/2004016611|" +
       "au.com.barnet.jade.cs.csobjects.qsearch.QuickSearchFlags/2740681188|" +
@@ -565,7 +565,7 @@ describe("parseCitatorResponse", () => {
 describe("buildCitatorSearchRequest", () => {
   it("uses LeftoverRemoteService strong name", () => {
     const body = buildCitatorSearchRequest(2463606);
-    expect(body).toContain("CCB23EABE2EF1A4CA63F2E243C979468");
+    expect(body).toContain("1D24CC41B607715BFC2FAE9A28012C5F");
     expect(body).toContain("LeftoverRemoteService");
   });
 
