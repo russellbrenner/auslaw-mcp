@@ -67,16 +67,16 @@ export const JADE_MODULE_BASE = "https://jade.io/au.com.barnet.jade.JadeClient/"
  * This may change when jade.io redeploys the GWT app.
  * If content fetching returns an exception response, this hash may need refreshing
  * by inspecting the X-GWT-Permutation header in a fresh browser session.
- * Last verified: 2026-03-03.
+ * Last verified: 2026-05-02.
  */
-export const JADE_STRONG_NAME = "B4F37C2BEC5AB097C4C8696FD843C56D";
+export const JADE_STRONG_NAME = "78A4E1BF92432B956B45BFCCAAD8EA7F";
 
 /**
  * GWT-RPC strong name (type hash) for ArticleViewRemoteService.
  * This service handles article content loading via the avd2Request method.
- * Discovered via SPA navigation interception (2026-03-02). Last verified: 2026-03-03.
+ * Discovered via SPA navigation interception (2026-03-02). Last verified: 2026-05-02.
  */
-export const AVD2_STRONG_NAME = "159521E79F7322FD92335ED73B4403F9";
+export const AVD2_STRONG_NAME = "540FEEFE1755510EEA65022BF9AEE249";
 
 /**
  * GWT permutation identifier for the Chrome/macOS compiled JS bundle.
@@ -91,9 +91,9 @@ export const JADE_PERMUTATION = "FEBDA911A95AD2DF02425A9C60379101";
  * GWT-RPC strong name (type hash) for LeftoverRemoteService.
  * This service handles citation-context searches ("who cites this article")
  * and citation data retrieval. NOT used for freetext case search.
- * Discovered from HAR analysis (2026-03-03).
+ * Discovered from HAR analysis (2026-03-03). Last verified: 2026-05-02.
  */
-export const LEFTOVER_STRONG_NAME = "CCB23EABE2EF1A4CA63F2E243C979468";
+export const LEFTOVER_STRONG_NAME = "1D24CC41B607715BFC2FAE9A28012C5F";
 
 /**
  * Encodes a non-negative integer using GWT's custom base-64 charset.
@@ -242,13 +242,13 @@ export function buildAvd2Request(articleId: number): string {
   return (
     `7|0|10|${JADE_MODULE_BASE}|${AVD2_STRONG_NAME}|` +
     `au.com.barnet.jade.cs.remote.ArticleViewRemoteService|avd2Request|` +
-    `au.com.barnet.jade.cs.csobjects.avd.Avd2Request/2068227305|` +
+    `au.com.barnet.jade.cs.csobjects.avd.Avd2Request/2858816011|` +
     `au.com.barnet.jade.cs.persistent.Jrl/728826604|` +
     `au.com.barnet.jade.cs.persistent.Article|` +
     `java.util.ArrayList/4159755760|` +
     `au.com.barnet.jade.cs.csobjects.avd.PhraseFrequencyParams/1915696367|` +
     `cc.alcina.framework.common.client.util.IntPair/1982199244|` +
-    `1|2|3|4|1|5|5|A|A|0|6|${encodedId}|A|0|A|A|7|0|0|0|8|0|0|9|0|10|3|500|A|8|0|`
+    `1|2|3|4|1|5|5|A|A|0|6|${encodedId}|A|0|A|A|7|0|0|0|8|0|0|9|0|10|3|500|A|8|0|8|0|`
   );
 }
 
@@ -874,7 +874,7 @@ export function buildCitatorSearchRequest(citableId: number): string {
     `cc.alcina.framework.common.client.logic.FilterCombinator/3213752301|` +
     `au.com.barnet.jade.cs.trans.othersearch.citation.CitableAndSectionsCriterion/4126754736|` +
     `au.com.barnet.jade.cs.trans.othersearch.citation.CitableCriterion/1545253367|` +
-    `cc.alcina.framework.gwt.client.objecttree.search.StandardSearchOperator/2480038826|` +
+    `cc.alcina.framework.gwt.client.objecttree.search.StandardSearchOperator/2244035871|` +
     `java.util.ArrayList/4159755760|` +
     `au.com.barnet.jade.cs.trans.searchcriteria.JTextCriteriaGroup/1895870655|` +
     `text (in the citing case)|` +
