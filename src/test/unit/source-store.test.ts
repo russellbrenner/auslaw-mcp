@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import path from "node:path";
 
 const mockFs = vi.hoisted(() => ({
   mkdir: vi.fn(),
@@ -165,7 +166,7 @@ describe("storeSource", () => {
 
   it("returns path under sourcesDir", async () => {
     const result = await storeSource("mabo1992", TEST_URL, null, SOURCES_DIR);
-    expect(result.path).toBe(`${SOURCES_DIR}/mabo1992.md`);
+    expect(result.path).toBe(path.join(SOURCES_DIR, "mabo1992.md"));
   });
 
   it("captures etag from HEAD response", async () => {
