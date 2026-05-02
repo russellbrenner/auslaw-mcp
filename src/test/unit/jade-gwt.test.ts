@@ -315,6 +315,30 @@ describe("parseProposeCitablesResponse", () => {
     expect(results).toEqual([]);
   });
 
+  it("returns empty results when parsed JSON is not a long-enough array (line 667)", () => {
+    // [1,2,3] has length 3 < 4, triggers the early return
+    const { results } = parseProposeCitablesResponse("//OK[1,2,3]");
+    expect(results).toEqual([]);
+  });
+
+  it("uses fallback caseName from preceding string when no ' v ' found (lines 737-745)", () => {
+    // Descriptor "[2024] HCA 5 - document in Jade" has no ";" → hasSemicolon=false
+    // "SomeCaseWithoutV" has no " v " → backward scan finds nothing
+    // Fallback: candidate = stringTable[descIdx-1] = "SomeCaseWithoutV"
+    const { results } = parseProposeCitablesResponse(
+      '//OK[0,["SomeCaseWithoutV","[2024] HCA 5 - document in Jade"],4,7]',
+    );
+    expect(results.length).toBe(1);
+    expect(results[0]!.caseName).toBe("SomeCaseWithoutV");
+    expect(results[0]!.neutralCitation).toBe("[2024] HCA 5");
+  });
+
+  it("returns empty when JSON parse fails after //OK prefix (line 663)", () => {
+    // "//OKinvalid" → stripped = "invalid" → JSON.parse throws → return empty
+    const { results } = parseProposeCitablesResponse("//OKinvalid");
+    expect(results).toEqual([]);
+  });
+
   it("deduplicates results with the same neutral citation", () => {
     const fixture = readFixture("propose-citables-mabo.txt");
     const { results } = parseProposeCitablesResponse(fixture);
@@ -419,6 +443,18 @@ describe("parseGwtRpcResponse", () => {
   it("throws when string table is empty", () => {
     expect(() => parseGwtRpcResponse("//OK[1,[],[],4,7]")).toThrow(/empty/i);
   });
+
+  it("throws when //OK body is not valid JSON (line 416)", () => {
+    expect(() => parseGwtRpcResponse("//OKnot-valid-json{{")).toThrow(/Failed to parse/);
+  });
+
+  it("throws when response array has fewer than 3 elements (line 420)", () => {
+    expect(() => parseGwtRpcResponse("//OK[1,2]")).toThrow(/unexpected structure/);
+  });
+
+  it("throws when string table first element is not a string (line 432)", () => {
+    expect(() => parseGwtRpcResponse("//OK[1,[],[123],4,7]")).toThrow(/not a string/);
+  });
 });
 
 describe("parseGwtConcatResponse", () => {
@@ -514,6 +550,15 @@ describe("parseCitatorResponse", () => {
     const { results, totalCount } = parseCitatorResponse("//OK[4,7]");
     expect(results).toEqual([]);
     expect(totalCount).toBe(0);
+  });
+
+  it("uses backward scan fallback for caseName when forward scan finds nothing (lines 566-567)", () => {
+    // String table: caseName ("Smith v Jones") comes BEFORE the citation ("[2024] HCA 5")
+    // Forward scan (after citation) finds nothing; backward scan finds the case name
+    const { results } = parseCitatorResponse('//OK[0,["Smith v Jones","[2024] HCA 5"],4,7]');
+    expect(results.length).toBe(1);
+    expect(results[0]!.caseName).toBe("Smith v Jones");
+    expect(results[0]!.neutralCitation).toBe("[2024] HCA 5");
   });
 });
 
