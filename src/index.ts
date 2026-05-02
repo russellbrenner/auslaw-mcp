@@ -206,7 +206,13 @@ function createMcpServer(): McpServer {
       if (config.sources.fetchByDefault && citeKey) {
         try {
           const existing = await getCitation(config.cache.dir, citeKey);
-          const storeResult = await storeSource(citeKey, url, existing, config.sources.dir);
+          const storeResult = await storeSource(
+            citeKey,
+            url,
+            existing,
+            config.sources.dir,
+            response,
+          );
           const relPath = path.relative(config.cache.dir, storeResult.path);
           await updateSourceFields(config.cache.dir, citeKey, {
             sourceFile: relPath,
@@ -714,7 +720,7 @@ function createMcpServer(): McpServer {
             text: JSON.stringify(
               {
                 path: writePath,
-                entries: bibText.split("\n\n").filter(Boolean).length,
+                entries: (bibText.match(/^@/gm) ?? []).length,
                 bib: bibText,
               },
               null,
