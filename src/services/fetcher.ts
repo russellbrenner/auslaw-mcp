@@ -139,8 +139,15 @@ function extractTextFromHtml(html: string, url?: string): string {
   const $ = cheerio.load(html);
 
   // Check if this is jade.io
-  if (url && url.includes("jade.io")) {
-    return extractTextFromJadeHtml(html);
+  if (url) {
+    try {
+      const hostname = new URL(url).hostname.toLowerCase();
+      if (hostname === "jade.io" || hostname.endsWith(".jade.io")) {
+        return extractTextFromJadeHtml(html);
+      }
+    } catch {
+      // If URL parsing fails, fall through to generic extraction.
+    }
   }
 
   // Remove script and style elements
