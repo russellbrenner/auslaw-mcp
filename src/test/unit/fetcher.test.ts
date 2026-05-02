@@ -125,6 +125,37 @@ describe("fetchDocumentText", () => {
     }
   });
 
+  it("routes www.jade.io subdomain through jade GWT-RPC (hostname.endsWith check)", async () => {
+    mockConfig.jade.sessionCookie = "IID=abc; alcsessionid=xyz";
+
+    const jadeHtml = "<div class='judgment-text'><p>[1] Subdomain judgment text.</p></div>";
+    vi.mocked(axios.post).mockResolvedValueOnce({
+      data: `//OK[0,-2,0,["Type/123","${jadeHtml}"],4,7]`,
+      status: 200,
+      headers: {},
+    });
+
+    const result = await fetchDocumentText("https://www.jade.io/article/67401");
+    expect(result.text).toContain("Subdomain judgment text");
+    expect(result.sourceUrl).toBe("https://www.jade.io/article/67401");
+  });
+
+  it("uses generic extraction for AustLII URL that contains 'jade.io' in query string", async () => {
+    // Regression: old url.includes("jade.io") would misroute this to jade extraction.
+    // assertFetchableUrl permits www.austlii.edu.au; hostname != jade.io so generic path is used.
+    const html = "<html><body><p>AustLII generic content</p></body></html>";
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: Buffer.from(html),
+      headers: { "content-type": "text/html" },
+      status: 200,
+    });
+
+    const result = await fetchDocumentText(
+      "https://www.austlii.edu.au/cgi-bin/viewdoc?ref=jade.io",
+    );
+    expect(result.text).toContain("AustLII generic content");
+  });
+
   it("extracts paragraph blocks from AustLII HTML with [N] markers", async () => {
     const html = `<html><body>
       <p>[1] First paragraph text here.</p>
