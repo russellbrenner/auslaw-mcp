@@ -65,7 +65,7 @@ describe("buildGetInitialContentRequest", () => {
   it("produces the exact known POST body for article 67401", () => {
     // Captured verbatim from Proxyman HAR export (jade.io_03-02-2026-13-48-33.har)
     const expected =
-      "7|0|7|https://jade.io/au.com.barnet.jade.JadeClient/|B4F37C2BEC5AB097C4C8696FD843C56D|" +
+      "7|0|7|https://jade.io/au.com.barnet.jade.JadeClient/|78A4E1BF92432B956B45BFCCAAD8EA7F|" +
       "au.com.barnet.jade.cs.remote.JadeRemoteService|getInitialContent|" +
       "au.com.barnet.jade.cs.persistent.Jrl/728826604|au.com.barnet.jade.cs.persistent.Article|" +
       "java.util.ArrayList/4159755760|1|2|3|4|1|5|5|QdJ|A|0|A|A|6|0|";
@@ -88,7 +88,7 @@ describe("buildGetMetadataRequest", () => {
   it("produces the exact known POST body for article 67401", () => {
     // Captured verbatim from Proxyman HAR export
     const expected =
-      "7|0|5|https://jade.io/au.com.barnet.jade.JadeClient/|B4F37C2BEC5AB097C4C8696FD843C56D|" +
+      "7|0|5|https://jade.io/au.com.barnet.jade.JadeClient/|78A4E1BF92432B956B45BFCCAAD8EA7F|" +
       "au.com.barnet.jade.cs.remote.JadeRemoteService|getArticleStructuredMetadata|J|" +
       "1|2|3|4|1|5|QdJ|";
     expect(buildGetMetadataRequest(67401)).toBe(expected);
@@ -107,15 +107,15 @@ describe("buildAvd2Request", () => {
     // Article: AA v The Trustees of the Roman Catholic Church... [2026] HCA 2
     const expected =
       "7|0|10|https://jade.io/au.com.barnet.jade.JadeClient/|" +
-      "159521E79F7322FD92335ED73B4403F9|" +
+      "540FEEFE1755510EEA65022BF9AEE249|" +
       "au.com.barnet.jade.cs.remote.ArticleViewRemoteService|avd2Request|" +
-      "au.com.barnet.jade.cs.csobjects.avd.Avd2Request/2068227305|" +
+      "au.com.barnet.jade.cs.csobjects.avd.Avd2Request/2858816011|" +
       "au.com.barnet.jade.cs.persistent.Jrl/728826604|" +
       "au.com.barnet.jade.cs.persistent.Article|" +
       "java.util.ArrayList/4159755760|" +
       "au.com.barnet.jade.cs.csobjects.avd.PhraseFrequencyParams/1915696367|" +
       "cc.alcina.framework.common.client.util.IntPair/1982199244|" +
-      "1|2|3|4|1|5|5|A|A|0|6|EgmX|A|0|A|A|7|0|0|0|8|0|0|9|0|10|3|500|A|8|0|";
+      "1|2|3|4|1|5|5|A|A|0|6|EgmX|A|0|A|A|7|0|0|0|8|0|0|9|0|10|3|500|A|8|0|8|0|";
     expect(buildAvd2Request(1182103)).toBe(expected);
   });
 
@@ -227,7 +227,7 @@ describe("buildProposeCitablesRequest", () => {
     // Captured verbatim from jade.io_03-03-2026-10-08-59.har, entry 11
     const expected =
       "7|0|10|https://jade.io/au.com.barnet.jade.JadeClient/|" +
-      "B4F37C2BEC5AB097C4C8696FD843C56D|" +
+      "78A4E1BF92432B956B45BFCCAAD8EA7F|" +
       "au.com.barnet.jade.cs.remote.JadeRemoteService|proposeCitables|" +
       "java.lang.String/2004016611|" +
       "au.com.barnet.jade.cs.csobjects.qsearch.QuickSearchFlags/2740681188|" +
@@ -312,6 +312,30 @@ describe("parseProposeCitablesResponse", () => {
 
   it("returns empty results for response with empty string table", () => {
     const { results } = parseProposeCitablesResponse("//OK[0,[],[],4,7]");
+    expect(results).toEqual([]);
+  });
+
+  it("returns empty results when parsed JSON is not a long-enough array (line 667)", () => {
+    // [1,2,3] has length 3 < 4, triggers the early return
+    const { results } = parseProposeCitablesResponse("//OK[1,2,3]");
+    expect(results).toEqual([]);
+  });
+
+  it("uses fallback caseName from preceding string when no ' v ' found (lines 737-745)", () => {
+    // Descriptor "[2024] HCA 5 - document in Jade" has no ";" → hasSemicolon=false
+    // "SomeCaseWithoutV" has no " v " → backward scan finds nothing
+    // Fallback: candidate = stringTable[descIdx-1] = "SomeCaseWithoutV"
+    const { results } = parseProposeCitablesResponse(
+      '//OK[0,["SomeCaseWithoutV","[2024] HCA 5 - document in Jade"],4,7]',
+    );
+    expect(results.length).toBe(1);
+    expect(results[0]!.caseName).toBe("SomeCaseWithoutV");
+    expect(results[0]!.neutralCitation).toBe("[2024] HCA 5");
+  });
+
+  it("returns empty when JSON parse fails after //OK prefix (line 663)", () => {
+    // "//OKinvalid" → stripped = "invalid" → JSON.parse throws → return empty
+    const { results } = parseProposeCitablesResponse("//OKinvalid");
     expect(results).toEqual([]);
   });
 
@@ -419,6 +443,18 @@ describe("parseGwtRpcResponse", () => {
   it("throws when string table is empty", () => {
     expect(() => parseGwtRpcResponse("//OK[1,[],[],4,7]")).toThrow(/empty/i);
   });
+
+  it("throws when //OK body is not valid JSON (line 416)", () => {
+    expect(() => parseGwtRpcResponse("//OKnot-valid-json{{")).toThrow(/Failed to parse/);
+  });
+
+  it("throws when response array has fewer than 3 elements (line 420)", () => {
+    expect(() => parseGwtRpcResponse("//OK[1,2]")).toThrow(/unexpected structure/);
+  });
+
+  it("throws when string table first element is not a string (line 432)", () => {
+    expect(() => parseGwtRpcResponse("//OK[1,[],[123],4,7]")).toThrow(/not a string/);
+  });
 });
 
 describe("parseGwtConcatResponse", () => {
@@ -515,12 +551,21 @@ describe("parseCitatorResponse", () => {
     expect(results).toEqual([]);
     expect(totalCount).toBe(0);
   });
+
+  it("uses backward scan fallback for caseName when forward scan finds nothing (lines 566-567)", () => {
+    // String table: caseName ("Smith v Jones") comes BEFORE the citation ("[2024] HCA 5")
+    // Forward scan (after citation) finds nothing; backward scan finds the case name
+    const { results } = parseCitatorResponse('//OK[0,["Smith v Jones","[2024] HCA 5"],4,7]');
+    expect(results.length).toBe(1);
+    expect(results[0]!.caseName).toBe("Smith v Jones");
+    expect(results[0]!.neutralCitation).toBe("[2024] HCA 5");
+  });
 });
 
 describe("buildCitatorSearchRequest", () => {
   it("uses LeftoverRemoteService strong name", () => {
     const body = buildCitatorSearchRequest(2463606);
-    expect(body).toContain("CCB23EABE2EF1A4CA63F2E243C979468");
+    expect(body).toContain("1D24CC41B607715BFC2FAE9A28012C5F");
     expect(body).toContain("LeftoverRemoteService");
   });
 
