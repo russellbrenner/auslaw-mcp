@@ -90,19 +90,6 @@ docker run -it --rm auslaw-mcp:latest
 
 See [docs/DOCKER.md](docs/DOCKER.md) for detailed Docker deployment instructions.
 
-### Kubernetes (k3s) Deployment
-
-```bash
-# Build and import image to k3s nodes
-docker build -t auslaw-mcp:latest .
-docker save auslaw-mcp:latest -o auslaw-mcp.tar
-
-# Deploy to k3s cluster
-kubectl apply -f k8s/
-```
-
-See [k8s/README.md](k8s/README.md) for complete Kubernetes deployment guide.
-
 ## MCP Registration
 
 Configure your MCP-compatible client (eg. Claude Desktop, Cursor, Claude Code)
@@ -504,18 +491,6 @@ docker-compose up       # Run locally
 ```
 
 See [docs/DOCKER.md](docs/DOCKER.md) for detailed Docker deployment instructions.
-
-### Kubernetes (k3s)
-
-Quick start:
-
-```bash
-./build.sh              # Build and export image
-# Import to k3s nodes (see k8s/README.md)
-./deploy-k8s.sh         # Deploy to cluster
-```
-
-See [k8s/README.md](k8s/README.md) for complete k3s deployment guide and [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) for a comprehensive deployment checklist.
 
 ### Configuration
 
