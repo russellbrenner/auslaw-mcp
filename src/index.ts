@@ -1,11 +1,14 @@
 #!/usr/bin/env node
-import "dotenv/config";
+// MUST come first — populates process.env from .env (resolved relative to this
+// script's directory) before any other import evaluates and reads process.env.
+// See load-env.ts for the rationale.
+import "./load-env.js";
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createServer } from "node:http";
 import { z } from "zod";
-
 import path from "node:path";
 import { formatFetchResponse, formatSearchResults } from "./utils/formatter.js";
 import { fetchDocumentText } from "./services/fetcher.js";
