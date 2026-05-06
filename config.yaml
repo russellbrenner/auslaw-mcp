@@ -20,6 +20,11 @@ austlii:
   # Request timeout in milliseconds (AustLII can be slow)
   timeout: ${AUSTLII_TIMEOUT:-60000}
 
+  # Optional Cookie header value (e.g. "cf_clearance=...; __cf_bm=...") captured
+  # from a real browser session. Required when AustLII presents a Cloudflare bot
+  # challenge. See README for extraction instructions.
+  cookie: ${AUSTLII_COOKIE:-}
+
 jade:
   # Base URL for jade.io
   baseUrl: ${JADE_BASE_URL:-https://jade.io}

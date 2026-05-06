@@ -523,8 +523,9 @@ All configuration can be customized via environment variables:
 
 - `AUSTLII_SEARCH_BASE` - AustLII search endpoint
 - `AUSTLII_REFERER` - Referer header
-- `AUSTLII_USER_AGENT` - User agent string
+- `AUSTLII_USER_AGENT` - User agent string (must match the browser that obtained `AUSTLII_COOKIE`)
 - `AUSTLII_TIMEOUT` - Request timeout (ms)
+- `AUSTLII_COOKIE` - Cloudflare bypass cookies for AustLII (see below)
 - `OCR_LANGUAGE` - Tesseract OCR language
 - `OCR_OEM`, `OCR_PSM` - OCR engine settings
 - `DEFAULT_SEARCH_LIMIT` - Default search results
@@ -534,6 +535,39 @@ All configuration can be customized via environment variables:
 - `JADE_SESSION_COOKIE` - jade.io authenticated session cookie (see below)
 
 See `src/config.ts` for defaults and `.env.example` for a template.
+
+### AustLII Cloudflare Bypass (`AUSTLII_COOKIE`)
+
+AustLII is fronted by Cloudflare's bot challenge. Plain HTTP clients (including this server) receive HTTP 403 unless they present a `cf_clearance` cookie that a real browser earned by passing the JS challenge. To unblock the server:
+
+1. Open [https://www.austlii.edu.au/](https://www.austlii.edu.au/) in Chrome. If a "Just a moment…" page appears, wait for it to redirect to the real site — that's you passing the challenge. (If the site loads instantly without a challenge, open it in an Incognito window to force a fresh check.)
+2. Open DevTools (⌘ + ⌥ + I on macOS, F12 elsewhere).
+3. Switch to the **Application** tab (it may be hidden behind the `»` overflow next to _Sources_).
+4. Left sidebar → **Storage** → **Cookies** → click `https://www.austlii.edu.au`.
+5. Copy the **Value** of the `cf_clearance` row, and the **Value** of `__cf_bm` if present.
+6. Switch to the **Console** tab and run `navigator.userAgent`. Copy the full string.
+7. Set both environment variables — the cookie is bound to the User-Agent that obtained it, so they must travel together:
+
+```bash
+export AUSTLII_COOKIE="cf_clearance=<value>; __cf_bm=<value>"
+export AUSTLII_USER_AGENT="<navigator.userAgent string>"
+```
+
+Or in `.env` at the project root (gitignored):
+
+```
+AUSTLII_COOKIE="cf_clearance=...; __cf_bm=..."
+AUSTLII_USER_AGENT="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
+```
+
+The cookie typically expires after 30 minutes to a few hours under bot-challenge mode. When you start seeing 403s again, repeat steps 1–7. The server detects the 403 and returns a re-extraction reminder rather than a generic error.
+
+**Caveats:**
+
+- The `cf_clearance` cookie is bound to your machine's outbound IP. If you switch networks (VPN on/off, different Wi-Fi), the cookie invalidates and you'll need to re-capture.
+- The User-Agent must match exactly — capturing a cookie with Chrome 147 and then sending requests with `AUSTLII_USER_AGENT=Chrome/120` will fail.
+- `cf_clearance` is `HttpOnly`, so it does **not** appear in `document.cookie` in the Console — use the Application tab.
+- Treat the value like a credential — don't commit `.env`, don't paste it in public channels.
 
 ### jade.io Authenticated Access
 

@@ -14,8 +14,18 @@ const execFileAsync = promisify(execFile);
 import { config } from "../config.js";
 import { MAX_CONTENT_LENGTH } from "../constants.js";
 import { isJadeUrl, extractArticleId, fetchJadeArticleContent } from "./jade.js";
+import { buildAustliiHeaders, austliiCloudflareErrorMessage } from "./austlii.js";
 import { assertFetchableUrl } from "../utils/url-guard.js";
 import { austliiRateLimiter, jadeRateLimiter } from "../utils/rate-limiter.js";
+
+function isAustliiUrl(url: string): boolean {
+  try {
+    const { hostname } = new URL(url);
+    return hostname === "austlii.edu.au" || hostname.endsWith(".austlii.edu.au");
+  } catch {
+    return false;
+  }
+}
 
 export interface ParagraphBlock {
   number: number;
@@ -311,9 +321,12 @@ export async function fetchDocumentText(url: string): Promise<FetchResponse> {
   try {
     await austliiRateLimiter.throttle();
 
-    const headers: Record<string, string> = {
-      "User-Agent": config.jade.userAgent,
-    };
+    // AustLII rejects non-browser User-Agents with 403, so send the same
+    // browser-like headers used by the search path. Other allowed hosts get
+    // the lightweight jade UA.
+    const headers: Record<string, string> = isAustliiUrl(url)
+      ? buildAustliiHeaders()
+      : { "User-Agent": config.jade.userAgent };
 
     const response = await axios.get(url, {
       responseType: "arraybuffer",
@@ -377,10 +390,14 @@ export async function fetchDocumentText(url: string): Promise<FetchResponse> {
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      if (isJadeUrl(url) && (error.response?.status === 401 || error.response?.status === 403)) {
+      const status = error.response?.status;
+      if (isJadeUrl(url) && (status === 401 || status === 403)) {
         throw new Error(
-          `jade.io returned ${error.response.status}. Set JADE_SESSION_COOKIE env var with your authenticated session cookie.`,
+          `jade.io returned ${status}. Set JADE_SESSION_COOKIE env var with your authenticated session cookie.`,
         );
+      }
+      if (isAustliiUrl(url) && (status === 401 || status === 403)) {
+        throw new Error(austliiCloudflareErrorMessage(status, "document fetch"));
       }
       throw new Error(`Failed to fetch document from ${url}: ${error.message}`);
     }

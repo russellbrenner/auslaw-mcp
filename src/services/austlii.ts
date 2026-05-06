@@ -49,14 +49,39 @@ export interface SearchOptions {
   offset?: number; // For pagination - skip first N results
 }
 
-// Browser-like headers required by AustLII
-const AUSTLII_HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  Referer: "https://www.austlii.edu.au/forms/search1.html",
-  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "Accept-Language": "en-AU,en;q=0.9",
-};
+// Browser-like headers required by AustLII. UA and Referer are sourced from
+// config so AUSTLII_USER_AGENT / AUSTLII_REFERER env vars take effect.
+//
+// AustLII is fronted by Cloudflare's bot challenge: when AUSTLII_COOKIE is set
+// (typically `cf_clearance=...; __cf_bm=...` captured from a browser session),
+// it is sent as the Cookie header so requests pass the challenge.
+export function buildAustliiHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    "User-Agent": config.austlii.userAgent,
+    Referer: config.austlii.referer,
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-AU,en;q=0.9",
+  };
+  if (config.austlii.cookie) {
+    headers.Cookie = config.austlii.cookie;
+  }
+  return headers;
+}
+
+/**
+ * Standardised 403/401 error message for AustLII Cloudflare blocks. Surfacing
+ * this to the user is more useful than the raw axios message.
+ */
+export function austliiCloudflareErrorMessage(status: number, context: string): string {
+  const cookieState = config.austlii.cookie ? "may have expired" : "is not set";
+  return (
+    `AustLII returned ${status} on ${context}. This is almost certainly Cloudflare's ` +
+    `bot challenge. AUSTLII_COOKIE ${cookieState} — capture cf_clearance (and __cf_bm) ` +
+    `from a real browser session at https://www.austlii.edu.au/ and set AUSTLII_COOKIE ` +
+    `to "cf_clearance=...; __cf_bm=...". Also set AUSTLII_USER_AGENT to the same ` +
+    `browser's navigator.userAgent — the cookie is bound to that exact UA.`
+  );
+}
 
 export interface SearchParams {
   query: string;
@@ -279,7 +304,7 @@ export async function searchAustLii(
 
     await austliiRateLimiter.throttle();
     const response = await axios.get(searchUrl.toString(), {
-      headers: AUSTLII_HEADERS,
+      headers: buildAustliiHeaders(),
       timeout: config.austlii.timeout,
     });
 
@@ -399,6 +424,10 @@ export async function searchAustLii(
     return finalResults.slice(0, limit);
   } catch (error) {
     if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      if (status === 403 || status === 401) {
+        throw new Error(austliiCloudflareErrorMessage(status, "search"));
+      }
       throw new Error(`AustLII search failed: ${error.message}`);
     }
     throw error;

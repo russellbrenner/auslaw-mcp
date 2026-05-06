@@ -14,6 +14,7 @@ import {
   REPORTERS,
 } from "../constants.js";
 import type { ParagraphBlock } from "./fetcher.js";
+import { buildAustliiHeaders, austliiCloudflareErrorMessage } from "./austlii.js";
 
 export interface ParsedCitation {
   neutralCitation?: string;
@@ -244,9 +245,29 @@ export async function validateCitation(citation: string): Promise<CitationValida
   }
   const url = `https://www.austlii.edu.au/cgi-bin/viewdoc/${path}/${year}/${num}.html`;
   try {
-    await axios.head(url, { timeout: 10000 });
+    // AustLII rejects non-browser User-Agents with 403, so send the same
+    // browser-like headers used by the search and fetch paths.
+    //
+    // Use a ranged GET rather than HEAD: Cloudflare's bot rules block HEAD
+    // requests outright (returns 403) while allowing GETs. The Range header
+    // keeps the response small — we only need to see whether the resource
+    // exists, not download the whole judgment.
+    await axios.get(url, {
+      headers: { ...buildAustliiHeaders(), Range: "bytes=0-1023" },
+      timeout: 10000,
+      // Accept 206 (partial) and 200; Cloudflare may ignore Range and return 200.
+      validateStatus: (s) => s === 200 || s === 206,
+    });
     return { valid: true, canonicalCitation: normalised, austliiUrl: url };
-  } catch {
+  } catch (error) {
+    // Surface a useful 403 message so callers know to set AUSTLII_COOKIE
+    // rather than misreading a Cloudflare block as "citation not found".
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      if (status === 403 || status === 401) {
+        throw new Error(austliiCloudflareErrorMessage(status, "citation validation"));
+      }
+    }
     return {
       valid: false,
       message: "Citation not found on AustLII",

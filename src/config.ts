@@ -11,6 +11,12 @@ export interface Config {
     referer: string;
     userAgent: string;
     timeout: number;
+    /**
+     * Optional Cookie header value (e.g. `cf_clearance=...; __cf_bm=...`)
+     * captured from a real browser session. Required when AustLII is fronted
+     * by Cloudflare's bot challenge — without it, requests 403.
+     */
+    cookie?: string;
   };
   jade: {
     baseUrl: string;
@@ -70,6 +76,7 @@ export function loadConfig(): Config {
         process.env.AUSTLII_USER_AGENT ||
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       timeout: parseInt(process.env.AUSTLII_TIMEOUT || "60000", 10), // AustLII can be slow
+      cookie: process.env.AUSTLII_COOKIE || undefined,
     },
     jade: {
       baseUrl: process.env.JADE_BASE_URL || "https://jade.io",

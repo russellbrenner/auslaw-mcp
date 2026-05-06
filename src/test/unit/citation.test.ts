@@ -132,7 +132,7 @@ describe("validateCitation", () => {
   });
 
   it("returns valid=true for known neutral citation (mocked 200)", async () => {
-    vi.spyOn(axios, "head").mockResolvedValueOnce({ status: 200 });
+    vi.spyOn(axios, "get").mockResolvedValueOnce({ status: 200 });
     const result = await validateCitation("[1992] HCA 23");
     expect(result.valid).toBe(true);
     expect(result.austliiUrl).toContain("HCA");
@@ -150,7 +150,7 @@ describe("validateCitation", () => {
   });
 
   it("returns valid=false on 404 (mocked)", async () => {
-    vi.spyOn(axios, "head").mockRejectedValueOnce({ response: { status: 404 } });
+    vi.spyOn(axios, "get").mockRejectedValueOnce({ response: { status: 404 } });
     const result = await validateCitation("[9999] HCA 999");
     expect(result.valid).toBe(false);
   });
