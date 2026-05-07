@@ -18,6 +18,36 @@ npm run lint:fix       # Auto-fix lint issues
 - Unit tests must all pass before committing; integration/perf test failures from network timeouts are acceptable
 - ESLint uses flat config (`eslint.config.mjs`), NOT legacy `.eslintrc`
 
+## When auslaw-mcp returns a 403 (Cloudflare cookie expired)
+
+If any `mcp__auslaw-mcp__*` tool returns an error containing `"AUSTLII_COOKIE may have expired"` or `"AUSTLII_COOKIE is not set"`, **automatically refresh the cookie before doing anything else, then retry the failing tool call**. The user does not need to be prompted — this is a routine maintenance step that should be invisible to them.
+
+The refresh procedure (do all of this without asking):
+
+1. Ensure **Claude in Chrome** is connected: call `mcp__Claude_in_Chrome__list_connected_browsers`. If empty, ask the user to open Chrome with the Claude extension signed in. Otherwise:
+2. Get an existing tab via `mcp__Claude_in_Chrome__tabs_context_mcp` (createIfEmpty: true), then navigate it to `https://www.austlii.edu.au/`. Read `document.title` — if it contains `"moment"` (Cloudflare's challenge page), wait 5 seconds and check again. Repeat up to ~3 times. Cloudflare almost always self-resolves silently for the user's normal Chrome.
+3. Once `document.title` is `"Australasian Legal Information Institute"` (or anything other than `"Just a moment..."`), Chrome has stored fresh `cf_clearance` and `__cf_bm` cookies in its DB. Run:
+   ```bash
+   node /Users/JaamaeHB/auslaw-mcp/scripts/refresh-austlii-cookie.mjs
+   ```
+   This decrypts the cookies from Chrome's SQLite cookie store using the macOS Keychain key and writes `AUSTLII_COOKIE` to every `.env` in scope (main repo + any worktrees discovered via `git rev-parse --git-common-dir`). One-time keychain prompt the very first run; silent thereafter.
+4. Kill running auslaw-mcp processes so they respawn against the new env:
+   ```bash
+   ps -ef | grep -E 'node .*auslaw-mcp.*dist/index\.js|node dist/index\.js' | grep -v grep | awk '{print $2}' | xargs kill 2>/dev/null
+   ```
+5. Retry the original failing tool call with the same arguments.
+
+Edge cases and recovery:
+
+- **Cloudflare presents a visible challenge** (rare — only if the user's browser fingerprint is flagged): the title stays `"Just a moment..."` after a few polls. Tell the user to glance at the Chrome window and click anything Cloudflare asks for, then re-run from step 3.
+- **Keychain access denied** (script exits with code 2): tell the user that the macOS Keychain prompt was declined or didn't appear; suggest re-running the script and clicking "Always Allow" in the dialog.
+- **Cookies not in DB** (script exits with code 1): the user has never visited AustLII in this Chrome profile, or cookies were cleared. Navigate Chrome to AustLII first, then re-run.
+- **Decryption fails** (exit 3): Chrome upgraded its cookie format. The script handles `v10`/`v11` and the Chrome ≥130 SHA-256 integrity prefix; anything else is a Chrome version drift — flag to the user, don't keep retrying silently.
+
+Do **not** ask the user to manually paste cookies unless the automated refresh has failed for one of the reasons above — the whole point of this procedure is to remove the manual paste step.
+
+The `AUSTLII_USER_AGENT` in `.env` does **not** need refreshing on each cookie rotation as long as the user's Chrome version doesn't change. If Chrome auto-updates and refreshes start failing with cookie-bound errors despite a successful run, capture the new UA via `mcp__Claude_in_Chrome__javascript_tool` running `navigator.userAgent` and update `AUSTLII_USER_AGENT` in `.env` to match.
+
 ## Key Architecture
 
 - `src/index.ts` - MCP server, 10 tool registrations
