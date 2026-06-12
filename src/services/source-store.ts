@@ -37,13 +37,14 @@ const CITE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 function buildSourceFilePath(citeKey: string, sourcesDir: string): string {
   if (!CITE_KEY_PATTERN.test(citeKey)) {
     throw new Error(
-      `Invalid citeKey '${citeKey}'. Only letters, numbers, underscores, and hyphens are allowed.`,
+      `Invalid citeKey '${citeKey}'. Must start with a letter or number and then use only letters, numbers, underscores, or hyphens.`,
     );
   }
 
   const baseDir = path.resolve(sourcesDir);
   const filePath = path.resolve(baseDir, `${citeKey}.md`);
-  if (!filePath.startsWith(`${baseDir}${path.sep}`)) {
+  const relative = path.relative(baseDir, filePath);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new Error(`Resolved source path escapes sources directory for citeKey '${citeKey}'.`);
   }
 

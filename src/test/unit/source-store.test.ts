@@ -183,9 +183,11 @@ describe("storeSource", () => {
   });
 
   it("rejects path traversal citeKey values", async () => {
-    await expect(storeSource("../escape", TEST_URL, null, SOURCES_DIR)).rejects.toThrow(
-      /Invalid citeKey/,
-    );
+    for (const key of ["../escape", "..\\escape", "/etc/passwd", "%2e%2e/escape", ""]) {
+      await expect(storeSource(key, TEST_URL, null, SOURCES_DIR)).rejects.toThrow(
+        /Invalid citeKey/,
+      );
+    }
     expect(fetchDocumentText).not.toHaveBeenCalled();
     expect(mockFs.writeFile).not.toHaveBeenCalled();
   });
