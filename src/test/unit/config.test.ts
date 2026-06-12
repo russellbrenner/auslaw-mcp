@@ -13,6 +13,7 @@ describe("loadConfig", () => {
   });
 
   it("sessionCookie is undefined when env var absent", () => {
+    vi.stubEnv("JADE_SESSION_COOKIE", undefined);
     const cfg = loadConfig();
     expect(cfg.jade.sessionCookie).toBeUndefined();
   });

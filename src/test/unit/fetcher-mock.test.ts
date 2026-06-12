@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import axios from "axios";
 import { fetchDocumentText } from "../../services/fetcher.js";
+import { config } from "../../config.js";
 import { AUSTLII_JUDGMENT_HTML } from "../fixtures/index.js";
 
 vi.mock("axios");
@@ -19,9 +20,17 @@ describe("fetchDocumentText (mocked)", () => {
   it("should throw a descriptive error for jade.io URLs instead of returning empty content", async () => {
     // jade.io is a GWT SPA — HTTP fetch returns a JS bootstrap shell, not judgment text.
     // Silently returning empty content is misleading; we want a clear, actionable error.
-    await expect(fetchDocumentText("https://jade.io/article/67401")).rejects.toThrow(
-      /jade\.io.*not supported|fetch_document_text.*jade\.io/i,
-    );
+    // The config singleton captures any ambient JADE_SESSION_COOKIE at import time,
+    // which would route this down the authenticated GWT path; force the no-cookie branch.
+    const savedCookie = config.jade.sessionCookie;
+    config.jade.sessionCookie = undefined;
+    try {
+      await expect(fetchDocumentText("https://jade.io/article/67401")).rejects.toThrow(
+        /jade\.io.*not supported|fetch_document_text.*jade\.io/i,
+      );
+    } finally {
+      config.jade.sessionCookie = savedCookie;
+    }
   });
 
   it("should extract text from HTML content", async () => {
