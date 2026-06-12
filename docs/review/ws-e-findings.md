@@ -237,3 +237,43 @@ descriptions, not adapter-tier framing, so they are outside this review's bindin
 scope; noted for a future docs pass if the project wants total uniformity.
 
 **Verdict: PASS (one doc-drift leak fixed).**
+
+---
+
+## Check 7 — Optional-dependency absence degrades with typed errors
+
+**Probe:** `@huggingface/transformers` is **genuinely absent** in this environment
+(`isEmbedderAvailable() === false`), so the embedder-absence path is exercised for
+real (no mock). DuckDB is present, so its absence path is verified by tracing the
+call chain rather than a forced unavailability.
+
+**Evidence (`src/test/unit/optional-dep-degradation.test.ts`, 4 tests, all PASS):**
+
+- Premise asserted: `isEmbedderAvailable()` is `false` here, so the suite probes
+  the real lazy-import failure, not a stub.
+- `semantic_search_local` with the embedder absent → `{ found:false, hits:[] }`
+  plus a **typed `notes` entry** naming the missing dependency
+  (`@huggingface/transformers`) and the disabled feature. **Never throws.**
+- `list_data_modules` works with **no DuckDB attach** — the registry metadata view
+  is independent of DuckDB (design §2.5), so introspection survives DuckDB absence.
+- `semantic_search_local` with no modules installed also returns a typed
+  `{ found:false }` with a `notes` array, never a throw.
+
+**DuckDB-absence path (verified by call-chain trace, since DuckDB is installed
+here):** `getDb()` returns `null` when `tryLoadDuckDB()` catches
+`ERR_MODULE_NOT_FOUND` (`modules.ts:261-296`); `attachModule` then returns `null`,
+and each deterministic/graph tool's loop does `if (!attached) continue`, ending in
+`{ found:false }`. No throw on any path.
+
+**Design observation (asymmetry, not a defect):** `semantic_search_local` emits a
+**per-call typed note** when its dependency is absent, but the three deterministic/
+graph tools (`get_provision`/`get_act_structure`/`find_citing`) return a bare
+`{ found:false }` on DuckDB absence — indistinguishable from a genuine miss at the
+call site. Per design §1.2 step 6 / §4.1 this is intentional: DuckDB absence is
+surfaced by the **capability probe** (`duckdb:false`) and `list_data_modules`, not
+by each tool. The visibility contract is satisfied at the probe layer. A small
+future enhancement (a `notes`/`reason` field on the deterministic tools when
+`duckdb` is absent) would make the degradation legible at the call site too;
+logged as a **deferred enhancement**.
+
+**Verdict: PASS.**
