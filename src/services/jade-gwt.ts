@@ -67,33 +67,33 @@ export const JADE_MODULE_BASE = "https://jade.io/au.com.barnet.jade.JadeClient/"
  * This may change when jade.io redeploys the GWT app.
  * If content fetching returns an exception response, this hash may need refreshing
  * by inspecting the X-GWT-Permutation header in a fresh browser session.
- * Last verified: 2026-05-02.
+ * Last verified: 2026-06-13.
  */
-export const JADE_STRONG_NAME = "78A4E1BF92432B956B45BFCCAAD8EA7F";
+export const JADE_STRONG_NAME = "F6E610452C7A15DE693DC8F95CF6849C";
 
 /**
  * GWT-RPC strong name (type hash) for ArticleViewRemoteService.
  * This service handles article content loading via the avd2Request method.
- * Discovered via SPA navigation interception (2026-03-02). Last verified: 2026-05-02.
+ * Discovered via SPA navigation interception (2026-03-02). Last verified: 2026-06-13.
  */
-export const AVD2_STRONG_NAME = "540FEEFE1755510EEA65022BF9AEE249";
+export const AVD2_STRONG_NAME = "140B3EF36354F0C5A95299A70B18A25F";
 
 /**
  * GWT permutation identifier for the Chrome/macOS compiled JS bundle.
  * Sent in the X-GWT-Permutation request header.
  * Different from JADE_STRONG_NAME - this identifies the browser-specific
  * JavaScript permutation, not the serialisation type hash.
- * Last verified: 2026-03-03.
+ * Last verified: 2026-06-13.
  */
-export const JADE_PERMUTATION = "FEBDA911A95AD2DF02425A9C60379101";
+export const JADE_PERMUTATION = "9F7FA3DEE1E002939D47FA3D6C3F3DA1";
 
 /**
  * GWT-RPC strong name (type hash) for LeftoverRemoteService.
  * This service handles citation-context searches ("who cites this article")
  * and citation data retrieval. NOT used for freetext case search.
- * Discovered from HAR analysis (2026-03-03). Last verified: 2026-05-02.
+ * Discovered from HAR analysis (2026-03-03). Last verified: 2026-06-13.
  */
-export const LEFTOVER_STRONG_NAME = "1D24CC41B607715BFC2FAE9A28012C5F";
+export const LEFTOVER_STRONG_NAME = "C759183224A415CB53405469AC1B351C";
 
 /**
  * Encodes a non-negative integer using GWT's custom base-64 charset.
