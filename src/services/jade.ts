@@ -2,6 +2,7 @@ import axios from "axios";
 import type { SearchResult, SearchOptions } from "./austlii.js";
 import { config } from "../config.js";
 import { jadeRateLimiter } from "../utils/rate-limiter.js";
+import { assertRedirectAllowed, MAX_REDIRECTS } from "../utils/url-guard.js";
 import {
   buildAvd2Request,
   parseAvd2Response,
@@ -218,6 +219,8 @@ export async function resolveArticle(articleId: number): Promise<JadeArticle> {
       timeout: config.jade.timeout,
       // jade.io pages can be substantial when authenticated
       maxContentLength: 5 * 1024 * 1024,
+      maxRedirects: MAX_REDIRECTS,
+      beforeRedirect: assertRedirectAllowed,
     });
 
     const html: string = typeof response.data === "string" ? response.data : String(response.data);
@@ -406,6 +409,8 @@ export async function searchJade(query: string, options: SearchOptions): Promise
       timeout: config.jade.timeout,
       responseType: "text",
       maxContentLength: 5 * 1024 * 1024,
+      maxRedirects: MAX_REDIRECTS,
+      beforeRedirect: assertRedirectAllowed,
     });
 
     const { results: parsed, flatArray } = parseProposeCitablesResponse(response.data as string);
@@ -506,6 +511,8 @@ export async function fetchJadeArticleContent(
     responseType: "text",
     // avd2Request responses can be large (700KB+ for HCA decisions)
     maxContentLength: 5 * 1024 * 1024,
+    maxRedirects: MAX_REDIRECTS,
+    beforeRedirect: assertRedirectAllowed,
   });
 
   return parseAvd2Response(response.data as string);
@@ -564,6 +571,8 @@ export async function searchCitingCases(caseName: string): Promise<CitatorSearch
       timeout: config.jade.timeout,
       responseType: "text",
       maxContentLength: 5 * 1024 * 1024,
+      maxRedirects: MAX_REDIRECTS,
+      beforeRedirect: assertRedirectAllowed,
     });
 
     const { flatArray } = parseProposeCitablesResponse(proposeResponse.data as string);
@@ -585,6 +594,8 @@ export async function searchCitingCases(caseName: string): Promise<CitatorSearch
       timeout: config.jade.timeout,
       responseType: "text",
       maxContentLength: 5 * 1024 * 1024,
+      maxRedirects: MAX_REDIRECTS,
+      beforeRedirect: assertRedirectAllowed,
     });
 
     const { results, totalCount } = parseCitatorResponse(citatorResponse.data as string);

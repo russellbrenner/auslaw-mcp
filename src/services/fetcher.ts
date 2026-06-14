@@ -5,7 +5,7 @@ import { PDFParse } from "pdf-parse";
 import { config } from "../config.js";
 import { MAX_CONTENT_LENGTH } from "../constants.js";
 import { isJadeUrl, extractArticleId, fetchJadeArticleContent } from "./jade.js";
-import { assertFetchableUrl } from "../utils/url-guard.js";
+import { assertFetchableUrl, assertRedirectAllowed, MAX_REDIRECTS } from "../utils/url-guard.js";
 import { austliiRateLimiter, jadeRateLimiter } from "../utils/rate-limiter.js";
 import {
   isAustliiUrl,
@@ -403,6 +403,8 @@ export async function fetchDocumentText(url: string): Promise<FetchResponse> {
       headers,
       timeout: config.jade.timeout,
       maxContentLength: MAX_CONTENT_LENGTH,
+      maxRedirects: MAX_REDIRECTS,
+      beforeRedirect: assertRedirectAllowed,
     });
 
     const buffer = Buffer.from(response.data);
